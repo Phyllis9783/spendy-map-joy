@@ -43,20 +43,31 @@ All colors MUST be HSL.
     --input: 214 32% 91%;
     --ring: 166 76% 46%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /* Gradients */
+    /* Apple-style Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(166 76% 46%), hsl(186 100% 69%));
     --gradient-secondary: linear-gradient(135deg, hsl(33 100% 50%), hsl(25 95% 53%));
-    --gradient-hero: linear-gradient(180deg, hsl(166 76% 96%), hsl(0 0% 100%));
+    --gradient-hero: linear-gradient(180deg, hsl(166 76% 98%) 0%, hsl(186 100% 98%) 50%, hsl(0 0% 100%) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, hsl(166 76% 96%) 0px, transparent 50%),
+                     radial-gradient(at 100% 100%, hsl(186 100% 96%) 0px, transparent 50%);
+    --gradient-glass: linear-gradient(135deg, 
+                      hsla(0, 0%, 100%, 0.8) 0%, 
+                      hsla(0, 0%, 100%, 0.4) 100%);
 
-    /* Shadows */
-    --shadow-soft: 0 2px 8px hsl(166 76% 46% / 0.1);
-    --shadow-medium: 0 4px 16px hsl(166 76% 46% / 0.15);
-    --shadow-glow: 0 0 24px hsl(166 76% 46% / 0.3);
+    /* Apple-style Shadows */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 2px 4px -2px rgb(0 0 0 / 0.05), 0 4px 8px -2px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -4px rgb(0 0 0 / 0.05), 0 8px 16px -4px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 8px 12px -6px rgb(0 0 0 / 0.08), 0 20px 32px -6px rgb(0 0 0 / 0.12);
+    --shadow-xl: 0 20px 24px -12px rgb(0 0 0 / 0.08), 0 32px 64px -12px rgb(0 0 0 / 0.14);
+    --shadow-glow: 0 0 32px hsl(166 76% 46% / 0.25);
+    --shadow-glow-strong: 0 0 48px hsl(166 76% 46% / 0.4);
 
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 
   .dark {
@@ -95,15 +106,24 @@ All colors MUST be HSL.
     --input: 217 33% 17%;
     --ring: 166 76% 46%;
 
-    /* Gradients for dark mode */
+    /* Dark mode gradients */
     --gradient-primary: linear-gradient(135deg, hsl(166 76% 46%), hsl(186 100% 69%));
     --gradient-secondary: linear-gradient(135deg, hsl(33 100% 50%), hsl(25 95% 53%));
     --gradient-hero: linear-gradient(180deg, hsl(217 33% 17%), hsl(222 47% 11%));
+    --gradient-mesh: radial-gradient(at 0% 0%, hsl(166 76% 20%) 0px, transparent 50%),
+                     radial-gradient(at 100% 100%, hsl(186 100% 20%) 0px, transparent 50%);
+    --gradient-glass: linear-gradient(135deg, 
+                      hsla(217, 33%, 17%, 0.8) 0%, 
+                      hsla(217, 33%, 17%, 0.4) 100%);
 
-    /* Shadows for dark mode */
-    --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.3);
-    --shadow-medium: 0 4px 16px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 24px hsl(166 76% 46% / 0.4);
+    /* Dark mode shadows */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-sm: 0 2px 4px -2px rgb(0 0 0 / 0.4), 0 4px 8px -2px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 4px 6px -4px rgb(0 0 0 / 0.4), 0 8px 16px -4px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 8px 12px -6px rgb(0 0 0 / 0.45), 0 20px 32px -6px rgb(0 0 0 / 0.55);
+    --shadow-xl: 0 20px 24px -12px rgb(0 0 0 / 0.5), 0 32px 64px -12px rgb(0 0 0 / 0.6);
+    --shadow-glow: 0 0 32px hsl(166 76% 46% / 0.4);
+    --shadow-glow-strong: 0 0 48px hsl(166 76% 46% / 0.6);
   }
 }
 
@@ -115,6 +135,8 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Smooth scrolling */
@@ -124,21 +146,54 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Apple-style Glass Morphism */
+  .glass-card {
+    background: var(--gradient-glass);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-nav {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .glass-nav {
+    background: rgba(30, 33, 48, 0.72);
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  /* Mesh gradient background */
+  .bg-mesh {
+    background: var(--gradient-mesh);
+  }
+
   /* Animation utilities */
   .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
+    animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-slide-up {
-    animation: slide-up 0.5s ease-out;
+    animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-scale-in {
-    animation: scale-in 0.3s ease-out;
+    animation: scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
   }
 
   /* Gradient backgrounds */
@@ -154,25 +209,59 @@ All colors MUST be HSL.
     background: var(--gradient-hero);
   }
 
-  /* Shadow utilities */
-  .shadow-soft {
-    box-shadow: var(--shadow-soft);
+  /* Apple-style Shadow utilities */
+  .shadow-xs {
+    box-shadow: var(--shadow-xs);
   }
 
-  .shadow-medium {
-    box-shadow: var(--shadow-medium);
+  .shadow-sm {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .shadow-md {
+    box-shadow: var(--shadow-md);
+  }
+
+  .shadow-lg {
+    box-shadow: var(--shadow-lg);
+  }
+
+  .shadow-xl {
+    box-shadow: var(--shadow-xl);
   }
 
   .shadow-glow {
     box-shadow: var(--shadow-glow);
   }
 
+  .shadow-glow-strong {
+    box-shadow: var(--shadow-glow-strong);
+  }
+
   /* Transition utilities */
   .transition-smooth {
     transition: var(--transition-smooth);
   }
+
+  .transition-spring {
+    transition: var(--transition-spring);
+  }
+
+  .transition-bounce {
+    transition: var(--transition-bounce);
+  }
+
+  /* Interactive states */
+  .interactive {
+    @apply transition-smooth hover:scale-[1.02] active:scale-[0.98];
+  }
+
+  .interactive-lift {
+    @apply transition-smooth hover:-translate-y-1 hover:shadow-lg active:translate-y-0;
+  }
 }
 
+/* Keyframe Animations */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -198,10 +287,37 @@ All colors MUST be HSL.
 @keyframes scale-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(166 76% 46% / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(166 76% 46% / 0.6);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
   }
 }
