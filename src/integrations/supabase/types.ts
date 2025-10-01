@@ -14,7 +14,208 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      challenges: {
+        Row: {
+          category: string | null
+          challenge_type: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          duration_days: number
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          target_amount: number
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          challenge_type: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_days: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          target_amount: number
+          title: string
+        }
+        Update: {
+          category?: string | null
+          challenge_type?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration_days?: number
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          target_amount?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          expense_date: string | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          updated_at: string | null
+          user_id: string
+          voice_input: string | null
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          updated_at?: string | null
+          user_id: string
+          voice_input?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          updated_at?: string | null
+          user_id?: string
+          voice_input?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          monthly_budget: number | null
+          preferred_currency: string | null
+          preferred_language: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          monthly_budget?: number | null
+          preferred_currency?: string | null
+          preferred_language?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          monthly_budget?: number | null
+          preferred_currency?: string | null
+          preferred_language?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      shares: {
+        Row: {
+          created_at: string | null
+          expense_id: string | null
+          id: string
+          is_public: boolean | null
+          likes_count: number | null
+          share_text: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expense_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          share_text?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expense_id?: string | null
+          id?: string
+          is_public?: boolean | null
+          likes_count?: number | null
+          share_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shares_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_challenges: {
+        Row: {
+          challenge_id: string
+          completed_at: string | null
+          current_amount: number | null
+          id: string
+          started_at: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed_at?: string | null
+          current_amount?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed_at?: string | null
+          current_amount?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
