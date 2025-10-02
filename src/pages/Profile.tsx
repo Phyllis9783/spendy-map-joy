@@ -1,40 +1,115 @@
-import { User, Settings, Database, TrendingUp, Award } from "lucide-react";
+import { User, Settings, Database, TrendingUp, Award, LogOut } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Profile {
+  full_name: string | null;
+  email: string | null;
+  monthly_budget: number;
+}
 
 const Profile = () => {
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [stats, setStats] = useState({
+    monthlyTotal: 0,
+    badges: 0,
+  });
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+      fetchStats();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      // Get current month expenses
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('amount')
+        .gte('expense_date', startOfMonth.toISOString());
+
+      if (error) throw error;
+
+      const total = data?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
+
+      // Get completed challenges count
+      const { count } = await supabase
+        .from('user_challenges')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user?.id)
+        .eq('status', 'completed');
+
+      setStats({
+        monthlyTotal: total,
+        badges: count || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
   return (
-    <div className="min-h-screen pb-20 bg-gradient-hero">
+    <div className="min-h-screen pb-20 bg-gradient-hero bg-mesh">
       {/* Header */}
-      <header className="px-6 pt-8 pb-6">
+      <header className="px-6 pt-8 pb-6 animate-fade-in">
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 bg-gradient-primary rounded-full flex items-center justify-center shadow-glow">
             <User className="w-10 h-10 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">訪客</h1>
-            <p className="text-sm text-muted-foreground">guest@spendy.map</p>
+            <h1 className="text-2xl font-bold">
+              {profile?.full_name || '用戶'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {profile?.email || user?.email}
+            </p>
           </div>
         </div>
       </header>
 
       {/* Stats Cards */}
-      <div className="px-6 space-y-4">
-        <Card className="p-6 shadow-soft">
+      <div className="px-6 space-y-4 animate-slide-up">
+        <Card className="p-6 glass-card shadow-md interactive-lift">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">本月總消費</p>
-              <p className="text-3xl font-bold mt-1">NT$ 0</p>
+              <p className="text-3xl font-bold mt-1">NT$ {Math.round(stats.monthlyTotal)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-primary" />
           </div>
         </Card>
 
-        <Card className="p-6 shadow-soft">
+        <Card className="p-6 glass-card shadow-md interactive-lift">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">累積徽章</p>
-              <p className="text-3xl font-bold mt-1">0</p>
+              <p className="text-3xl font-bold mt-1">{stats.badges}</p>
             </div>
             <Award className="w-8 h-8 text-secondary" />
           </div>
@@ -42,18 +117,23 @@ const Profile = () => {
       </div>
 
       {/* Menu */}
-      <div className="px-6 mt-8 space-y-2">
-        <Button variant="ghost" className="w-full justify-start h-14">
+      <div className="px-6 mt-8 space-y-2 animate-fade-in">
+        <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
           <Settings className="w-5 h-5 mr-3" />
           <span>設定</span>
         </Button>
 
-        <Button variant="ghost" className="w-full justify-start h-14">
+        <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
           <Database className="w-5 h-5 mr-3" />
           <span>資料匯出</span>
         </Button>
 
-        <Button variant="ghost" className="w-full justify-start h-14 text-destructive hover:text-destructive">
+        <Button
+          variant="ghost"
+          onClick={signOut}
+          className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02] text-destructive hover:text-destructive"
+        >
+          <LogOut className="w-5 h-5 mr-3" />
           <span>登出</span>
         </Button>
       </div>

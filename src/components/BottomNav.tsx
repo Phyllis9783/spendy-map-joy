@@ -12,7 +12,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
+    <nav className="fixed bottom-0 left-0 right-0 glass-nav z-50 shadow-lg">
       <div className="max-w-4xl mx-auto px-6 py-3">
         <div className="flex justify-around items-center">
           {navItems.map((item) => {
@@ -25,11 +25,11 @@ const BottomNav = () => {
                 to={item.path}
                 className={`
                   flex flex-col items-center gap-1 py-2 px-4 rounded-xl
-                  transition-smooth hover:bg-muted
-                  ${isActive ? 'text-primary' : 'text-muted-foreground'}
+                  transition-spring
+                  ${isActive ? 'text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}
                 `}
               >
-                <Icon className={`w-6 h-6 ${isActive ? 'scale-110' : ''} transition-smooth`} />
+                <Icon className={`w-6 h-6 transition-spring ${isActive ? 'animate-float' : ''}`} />
                 <span className="text-xs font-medium">{item.label}</span>
               </Link>
             );
