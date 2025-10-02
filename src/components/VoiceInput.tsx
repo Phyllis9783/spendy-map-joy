@@ -15,11 +15,24 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   const { toast } = useToast();
   const recognitionRef = useRef<any>(null);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast({
         title: "不支援語音輸入",
-        description: "您的瀏覽器不支援語音辨識功能",
+        description: "您的瀏覽器不支援語音辨識功能，請使用 Chrome、Edge 或 Safari",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Request microphone permission first
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error: any) {
+      console.error('Microphone permission error:', error);
+      toast({
+        title: "需要麥克風權限",
+        description: "請允許使用麥克風以進行語音輸入",
         variant: "destructive",
       });
       return;
@@ -27,9 +40,16 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.lang = 'zh-TW';
+    
+    // Try different Chinese language codes with fallback
+    const languages = ['zh-CN', 'zh-HK', 'zh-TW', 'zh', 'en-US'];
+    recognitionRef.current.lang = languages[0];
+    
     recognitionRef.current.continuous = false;
     recognitionRef.current.interimResults = false;
+    recognitionRef.current.maxAlternatives = 1;
+    
+    console.log('Starting speech recognition with language:', recognitionRef.current.lang);
 
     recognitionRef.current.onstart = () => {
       setIsRecording(true);
@@ -47,16 +67,37 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     };
 
     recognitionRef.current.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('Speech recognition error:', event.error, event);
       setIsRecording(false);
       
-      if (event.error !== 'aborted') {
-        toast({
-          title: "語音辨識錯誤",
-          description: "請再試一次",
-          variant: "destructive",
-        });
+      let errorMessage = "請再試一次";
+      
+      switch (event.error) {
+        case 'not-allowed':
+        case 'service-not-allowed':
+          errorMessage = "請允許瀏覽器使用麥克風權限";
+          break;
+        case 'no-speech':
+          errorMessage = "沒有偵測到語音，請重試";
+          break;
+        case 'audio-capture':
+          errorMessage = "無法存取麥克風，請檢查設備";
+          break;
+        case 'network':
+          errorMessage = "網路連線問題，請檢查網路";
+          break;
+        case 'language-not-supported':
+          errorMessage = "語言不支援，嘗試使用其他語言";
+          break;
+        case 'aborted':
+          return; // Don't show error for aborted
       }
+      
+      toast({
+        title: "語音辨識錯誤",
+        description: errorMessage,
+        variant: "destructive",
+      });
     };
 
     recognitionRef.current.onend = () => {
