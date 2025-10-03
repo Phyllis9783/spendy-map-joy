@@ -17,7 +17,12 @@ const signInSchema = z.object({
 const signUpSchema = z.object({
   name: z.string().trim().min(1, { message: "姓名不能為空" }).max(100, { message: "姓名過長" }),
   email: z.string().trim().email({ message: "請輸入有效的電子郵件地址" }).max(255, { message: "電子郵件地址過長" }),
-  password: z.string().min(6, { message: "密碼至少需要 6 個字元" }).max(100, { message: "密碼過長" })
+  password: z.string()
+    .min(8, { message: "密碼至少需要 8 個字元" })
+    .max(100, { message: "密碼過長" })
+    .regex(/[a-z]/, { message: "密碼必須包含小寫字母" })
+    .regex(/[A-Z]/, { message: "密碼必須包含大寫字母" })
+    .regex(/[0-9]/, { message: "密碼必須包含數字" })
 });
 
 const Auth = () => {
@@ -34,6 +39,13 @@ const Auth = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpName, setSignUpName] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasMinLength: false,
+    hasLowerCase: false,
+    hasUpperCase: false,
+    hasNumber: false,
+    isStrong: false
+  });
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +70,22 @@ const Auth = () => {
     if (data && !error) {
       navigate("/");
     }
+  };
+
+  const checkPasswordStrength = (password: string) => {
+    const hasMinLength = password.length >= 8;
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const isStrong = hasMinLength && hasLowerCase && hasUpperCase && hasNumber;
+
+    setPasswordStrength({
+      hasMinLength,
+      hasLowerCase,
+      hasUpperCase,
+      hasNumber,
+      isStrong
+    });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -183,16 +211,35 @@ const Auth = () => {
                     type="password"
                     placeholder="••••••••"
                     value={signUpPassword}
-                    onChange={(e) => setSignUpPassword(e.target.value)}
+                    onChange={(e) => {
+                      setSignUpPassword(e.target.value);
+                      checkPasswordStrength(e.target.value);
+                    }}
                     required
-                    minLength={6}
+                    minLength={8}
                     className="transition-smooth"
                   />
+                  {signUpPassword && (
+                    <div className="space-y-1 text-xs mt-2">
+                      <p className={passwordStrength.hasMinLength ? "text-green-600" : "text-muted-foreground"}>
+                        {passwordStrength.hasMinLength ? "✓" : "○"} 至少 8 個字元
+                      </p>
+                      <p className={passwordStrength.hasLowerCase ? "text-green-600" : "text-muted-foreground"}>
+                        {passwordStrength.hasLowerCase ? "✓" : "○"} 包含小寫字母
+                      </p>
+                      <p className={passwordStrength.hasUpperCase ? "text-green-600" : "text-muted-foreground"}>
+                        {passwordStrength.hasUpperCase ? "✓" : "○"} 包含大寫字母
+                      </p>
+                      <p className={passwordStrength.hasNumber ? "text-green-600" : "text-muted-foreground"}>
+                        {passwordStrength.hasNumber ? "✓" : "○"} 包含數字
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (signUpPassword && !passwordStrength.isStrong)}
                   className="w-full bg-gradient-primary hover:opacity-90 transition-smooth"
                 >
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

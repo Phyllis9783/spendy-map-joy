@@ -70,9 +70,26 @@ export const useAuth = () => {
       return { data, error: null };
     } catch (error: any) {
       console.error('Sign up error:', error);
+      
+      // Enhanced error messages for HIBP and common issues
+      let errorMessage = error.message;
+      
+      if (error.message?.toLowerCase().includes('password') && 
+          (error.message?.toLowerCase().includes('breach') || 
+           error.message?.toLowerCase().includes('leaked') ||
+           error.message?.toLowerCase().includes('pwned'))) {
+        errorMessage = "此密碼曾在資料外洩事件中出現，為了您的安全，請使用其他密碼";
+      } else if (error.message?.includes('User already registered')) {
+        errorMessage = "此電子郵件已被註冊，請嘗試登入或使用其他郵件";
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = "電子郵件格式不正確";
+      } else if (error.message?.includes('Password should be')) {
+        errorMessage = "密碼必須至少 8 個字元，並包含大小寫字母及數字";
+      }
+      
       toast({
         title: "註冊失敗",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       return { data: null, error };
@@ -96,9 +113,19 @@ export const useAuth = () => {
       return { data, error: null };
     } catch (error: any) {
       console.error('Sign in error:', error);
+      
+      // Enhanced error messages for login issues
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "電子郵件或密碼錯誤，請重新嘗試";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "請先確認您的電子郵件地址";
+      }
+      
       toast({
         title: "登入失敗",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       return { data: null, error };
