@@ -70,6 +70,36 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('AI API error:', response.status, errorText);
+      
+      // Forward specific error codes for rate limiting and payment issues
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Rate limit exceeded. Please try again later.',
+            code: 429
+          }),
+          { 
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ 
+            success: false,
+            error: 'Payment required. Please add credits to your account.',
+            code: 402
+          }),
+          { 
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+      
       throw new Error(`AI API error: ${response.status}`);
     }
 
@@ -99,7 +129,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         expense: {
-          amount: parsedExpense.amount,
+          amount: Number(parsedExpense.amount),
           category: parsedExpense.category,
           description: parsedExpense.description || '',
           location_name: parsedExpense.location_name || null,
