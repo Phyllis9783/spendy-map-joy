@@ -511,7 +511,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           <div className="glass-card p-3 rounded-lg text-xs space-y-1">
             <p className="font-medium text-primary">範例：</p>
             <p className="text-muted-foreground">「今天在星巴克花了150元買咖啡」</p>
-            <p className="text-muted-foreground">「圍棋米粉100個¥10午餐」</p>
           </div>
           <div className="flex gap-2 justify-center">
             <button
