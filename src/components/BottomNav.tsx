@@ -1,5 +1,6 @@
 import { Home, Map, Users, User } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 
 const BottomNav = () => {
   const location = useLocation();
@@ -23,14 +24,34 @@ const BottomNav = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`
-                  flex flex-col items-center gap-1 py-2 px-4 rounded-xl
-                  transition-spring
-                  ${isActive ? 'text-primary scale-110' : 'text-muted-foreground hover:text-foreground'}
-                `}
+                onClick={() => {
+                  if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                  }
+                }}
+                className="relative"
               >
-                <Icon className={`w-6 h-6 transition-spring ${isActive ? 'animate-float' : ''}`} />
-                <span className="text-xs font-medium">{item.label}</span>
+                <motion.div
+                  className={`
+                    flex flex-col items-center gap-1 py-2 px-4 rounded-xl relative
+                    transition-all duration-300
+                    ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}
+                  `}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-primary/10 rounded-xl"
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                  <Icon className={`w-6 h-6 relative z-10 ${isActive ? 'animate-bounce-subtle' : ''}`} />
+                  <span className={`text-xs font-medium relative z-10 ${isActive ? 'font-bold' : ''}`}>
+                    {item.label}
+                  </span>
+                </motion.div>
               </Link>
             );
           })}

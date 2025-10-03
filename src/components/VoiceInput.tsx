@@ -1,9 +1,11 @@
-import { useState, useRef } from "react";
-import { Mic, Loader2, Type } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Mic, Loader2, Type, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { motion } from "framer-motion";
+import Confetti from "react-confetti";
 
 interface VoiceInputProps {
   onExpenseCreated: () => void;
@@ -19,26 +21,28 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   const [useRecording, setUseRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const { toast } = useToast();
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentLanguageIndex = useRef(0);
 
-  // Text preprocessing
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const preprocessText = (text: string): string => {
     let processed = text.trim();
-    
-    // Remove filler words
     processed = processed.replace(/[嗯呃啊喔哦]/g, '');
-    
-    // Standardize currency units
     processed = processed.replace(/塊錢/g, '元');
     processed = processed.replace(/([0-9]+)塊/g, '$1元');
-    
-    // Standardize time expressions
     processed = processed.replace(/今日|今仔日/g, '今天');
     processed = processed.replace(/昨日|昨仔日/g, '昨天');
-    
     return processed;
   };
 
@@ -53,7 +57,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       return;
     }
 
-    // Request microphone permission first
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
       console.log('Microphone permission granted');
@@ -71,17 +74,15 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
     
-    // Try different Chinese language codes with fallback
     const languages = ['zh-CN', 'zh-HK', 'zh-TW', 'zh', 'en-US'];
     recognitionRef.current.lang = languages[currentLanguageIndex.current];
     
     recognitionRef.current.continuous = false;
     recognitionRef.current.interimResults = true;
-    recognitionRef.current.maxAlternatives = 3; // Increased for better accuracy
+    recognitionRef.current.maxAlternatives = 3;
     
     console.log('Starting speech recognition with language:', recognitionRef.current.lang);
 
-    // Set timeout for no speech
     timeoutRef.current = setTimeout(() => {
       if (isRecording && recognitionRef.current) {
         console.log('Speech timeout - no speech detected');
@@ -92,7 +93,7 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         });
         setShowManualInput(true);
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
     recognitionRef.current.onstart = () => {
       setIsRecording(true);
@@ -102,7 +103,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     };
 
     recognitionRef.current.onresult = async (event: any) => {
-      // Clear timeout since we got results
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -119,7 +119,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           finalTranscript += transcript;
           console.log('Confidence:', confidence);
           
-          // Low confidence warning
           if (confidence < 0.7) {
             setInterimText(`${transcript} (置信度較低，請確認)`);
           }
@@ -128,13 +127,11 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         }
       }
 
-      // Update interim results for live display
       if (interimTranscript) {
         setInterimText(interimTranscript);
         console.log('Interim text:', interimTranscript);
       }
 
-      // Process final results
       if (finalTranscript) {
         console.log('Final recognized text:', finalTranscript);
         const preprocessed = preprocessText(finalTranscript);
@@ -143,7 +140,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         setInterimText("");
         setIsRecording(false);
         
-        // Process the recognized text
         await processExpense(preprocessed);
       }
     };
@@ -151,7 +147,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     recognitionRef.current.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error, event);
       
-      // Clear timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -160,7 +155,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       setIsRecording(false);
       setInterimText("");
       
-      // Handle language not supported with fallback
       if (event.error === 'language-not-supported' && currentLanguageIndex.current < 4) {
         currentLanguageIndex.current++;
         console.log('Retrying with next language...');
@@ -196,7 +190,7 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           setShowManualInput(true);
           break;
         case 'aborted':
-          return; // Don't show error for aborted
+          return;
       }
       
       toast({
@@ -209,13 +203,11 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     recognitionRef.current.onend = () => {
       console.log('Speech recognition ended');
       
-      // Clear timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
 
-      // If we have interim text but no final result, process it
       if (interimText && !recognizedText && isRecording) {
         console.log('Processing interim text as final:', interimText);
         const preprocessed = preprocessText(interimText);
@@ -253,7 +245,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       setAudioChunks(chunks);
       setIsRecording(true);
 
-      // Auto-stop after 15 seconds
       setTimeout(() => {
         if (recorder.state === 'recording') {
           recorder.stop();
@@ -287,21 +278,18 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     setIsProcessing(true);
 
     try {
-      // Convert blob to base64
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
       
       const base64Audio = await new Promise<string>((resolve, reject) => {
         reader.onload = () => {
           const result = reader.result as string;
-          // Remove data:audio/webm;base64, prefix
           const base64 = result.split(',')[1];
           resolve(base64);
         };
         reader.onerror = reject;
       });
 
-      // Call transcription edge function
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audio: base64Audio }
       });
@@ -317,7 +305,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       const preprocessed = preprocessText(text);
       setRecognizedText(preprocessed);
 
-      // Process the transcribed text
       await processExpense(preprocessed);
 
     } catch (error: any) {
@@ -358,7 +345,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     setIsProcessing(true);
 
     try {
-      // Call edge function to parse expense
       const { data, error } = await supabase.functions.invoke('parse-expense', {
         body: { text }
       });
@@ -372,7 +358,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       const expense = data.expense;
       console.log('Parsed expense:', expense);
 
-      // Save expense to database
       const { error: insertError } = await supabase
         .from('expenses')
         .insert({
@@ -389,8 +374,16 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
       if (insertError) throw insertError;
 
+      // Celebration!
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+
       toast({
-        title: "記帳成功！",
+        title: "🎉 記帳成功！",
         description: `已記錄 ${expense.amount} 元的 ${expense.category} 消費${expense.location_name ? ` - ${expense.location_name}` : ''}`,
       });
 
@@ -403,7 +396,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     } catch (error: any) {
       console.error('Error processing expense:', error);
       
-      // Handle specific error codes
       let errorMessage = error.message || "無法處理輸入，請再試一次";
       
       if (error.message?.includes('429')) {
@@ -443,7 +435,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         stopRecording();
       }
     } else {
-      // Try speech recognition first, fallback to audio recording if fails
       if (!useRecording) {
         startRecording();
       } else {
@@ -453,116 +444,161 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto">
-      <Button
-        onClick={handleClick}
-        disabled={isProcessing}
-        size="lg"
-        className={`
-          relative w-32 h-32 rounded-full shadow-glow-strong
-          transition-spring interactive
-          ${isRecording 
-            ? 'bg-destructive hover:bg-destructive/90 animate-pulse-slow' 
-            : isProcessing
-            ? 'bg-muted'
-            : 'bg-gradient-primary'
-          }
-        `}
-      >
-        {isProcessing ? (
-          <Loader2 className="w-12 h-12 animate-spin" />
-        ) : (
-          <Mic className="w-12 h-12" />
+    <>
+      {showConfetti && (
+        <Confetti
+          width={windowSize.width}
+          height={windowSize.height}
+          recycle={false}
+          numberOfPieces={200}
+          gravity={0.3}
+        />
+      )}
+      
+      <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
+        {/* Orbit rings */}
+        {isRecording && (
+          <>
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-primary/30 pointer-events-none"
+              style={{ width: '180px', height: '180px', left: 'calc(50% - 90px)', top: '0' }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+            />
+            <motion.div
+              className="absolute inset-0 rounded-full border-2 border-primary/20 pointer-events-none"
+              style={{ width: '200px', height: '200px', left: 'calc(50% - 100px)', top: '-10px' }}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            />
+          </>
         )}
-      </Button>
 
-      {isRecording && (
-        <div className="text-center space-y-2">
-          <p className="text-sm font-medium text-primary animate-pulse">
-            正在聆聽中...（點擊停止）
-          </p>
-          {interimText && (
-            <div className="glass-card px-4 py-2 rounded-xl shadow-sm">
-              <p className="text-xs text-muted-foreground">即時辨識：</p>
-              <p className="text-sm font-medium text-primary">{interimText}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {isProcessing && (
-        <p className="text-sm font-medium text-muted-foreground">
-          處理中...
-        </p>
-      )}
-
-      {recognizedText && !isProcessing && (
-        <div className="glass-card px-4 py-2 rounded-xl shadow-sm max-w-md">
-          <p className="text-xs text-muted-foreground">辨識結果：</p>
-          <p className="text-sm font-medium">{recognizedText}</p>
-        </div>
-      )}
-
-      {!isRecording && !isProcessing && !recognizedText && (
-        <div className="text-center space-y-3">
-          <p className="text-sm text-muted-foreground">
-            點擊麥克風開始記帳
-          </p>
-          <div className="glass-card p-3 rounded-lg text-xs space-y-1">
-            <p className="font-medium text-primary">範例：</p>
-            <p className="text-muted-foreground">「今天在星巴克花了150元買咖啡」</p>
-          </div>
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => setShowManualInput(!showManualInput)}
-              className="text-xs text-primary hover:underline"
-            >
-              改用文字輸入
-            </button>
-            {!useRecording && (
-              <button
-                onClick={() => {
-                  setUseRecording(true);
-                  toast({
-                    title: "切換到錄音模式",
-                    description: "將使用錄音轉文字功能",
-                  });
-                }}
-                className="text-xs text-primary hover:underline"
-              >
-                改用錄音轉文字
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showManualInput && !isProcessing && (
-        <div className="w-full space-y-2 glass-card p-4 rounded-xl">
-          <div className="flex items-center gap-2 mb-2">
-            <Type className="w-4 h-4 text-muted-foreground" />
-            <p className="text-sm font-medium">文字輸入</p>
-          </div>
-          <Input
-            value={manualText}
-            onChange={(e) => setManualText(e.target.value)}
-            placeholder="例如：在星巴克花了150元買咖啡"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleManualSubmit();
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Button
+            onClick={handleClick}
+            disabled={isProcessing}
+            size="lg"
+            className={`
+              relative w-32 h-32 rounded-full shadow-glow-strong overflow-hidden z-10
+              transition-spring
+              ${isRecording 
+                ? 'bg-destructive hover:bg-destructive/90' 
+                : isProcessing
+                ? 'bg-muted'
+                : 'bg-gradient-primary'
               }
-            }}
-          />
-          <Button 
-            onClick={handleManualSubmit}
-            className="w-full"
-            disabled={!manualText.trim()}
+              ${!isRecording && !isProcessing && 'animate-breath'}
+            `}
           >
-            送出
+            {isProcessing ? (
+              <Loader2 className="w-12 h-12 animate-spin" />
+            ) : isRecording ? (
+              <>
+                <motion.div
+                  className="absolute inset-0 bg-white/20"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+                <Mic className="w-12 h-12 relative z-10" />
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5 absolute top-3 right-3 text-white/60 animate-pulse" />
+                <Mic className="w-12 h-12" />
+              </>
+            )}
           </Button>
-        </div>
-      )}
-    </div>
+        </motion.div>
+
+        {isRecording && (
+          <motion.div 
+            className="text-center space-y-2"
+            animate={{ opacity: [1, 0.7, 1] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          >
+            <p className="text-sm font-medium text-primary">
+              🎤 正在聆聽中...（點擊停止）
+            </p>
+            {interimText && (
+              <div className="glass-card px-4 py-2 rounded-xl shadow-sm">
+                <p className="text-xs text-muted-foreground">即時辨識：</p>
+                <p className="text-sm font-medium text-primary">{interimText}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {isProcessing && (
+          <motion.p 
+            className="text-sm font-medium text-muted-foreground"
+            animate={{ opacity: [1, 0.5, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          >
+            ⚡ 處理中...
+          </motion.p>
+        )}
+
+        {!isRecording && !isProcessing && (
+          <motion.p
+            className="text-sm text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            點擊麥克風開始語音記帳 ✨
+          </motion.p>
+        )}
+
+        {recognizedText && !isProcessing && (
+          <div className="glass-card px-4 py-2 rounded-xl shadow-sm max-w-md">
+            <p className="text-xs text-muted-foreground">已辨識：</p>
+            <p className="text-sm font-medium">{recognizedText}</p>
+          </div>
+        )}
+
+        {!showManualInput && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowManualInput(true)}
+            className="text-xs"
+          >
+            <Type className="w-3 h-3 mr-1" />
+            改用文字輸入
+          </Button>
+        )}
+
+        {showManualInput && (
+          <motion.div 
+            className="flex gap-2 w-full max-w-md"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Input
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              placeholder="例如：在星巴克花了150元買咖啡"
+              className="flex-1"
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleManualSubmit();
+                }
+              }}
+            />
+            <Button
+              onClick={handleManualSubmit}
+              disabled={isProcessing || !manualText.trim()}
+            >
+              送出
+            </Button>
+          </motion.div>
+        )}
+      </div>
+    </>
   );
 };
 

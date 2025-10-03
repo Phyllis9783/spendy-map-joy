@@ -36,6 +36,13 @@ All colors MUST be HSL.
     --warning: 33 100% 50%;
     --warning-foreground: 0 0% 100%;
 
+    /* Category-specific colors */
+    --category-food: 15 85% 60%;
+    --category-transport: 210 85% 60%;
+    --category-entertainment: 280 70% 65%;
+    --category-shopping: 140 60% 55%;
+    --category-daily: 35 80% 60%;
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
@@ -50,10 +57,18 @@ All colors MUST be HSL.
     --gradient-secondary: linear-gradient(135deg, hsl(33 100% 50%), hsl(25 95% 53%));
     --gradient-hero: linear-gradient(180deg, hsl(166 76% 98%) 0%, hsl(186 100% 98%) 50%, hsl(0 0% 100%) 100%);
     --gradient-mesh: radial-gradient(at 0% 0%, hsl(166 76% 96%) 0px, transparent 50%),
-                     radial-gradient(at 100% 100%, hsl(186 100% 96%) 0px, transparent 50%);
+                     radial-gradient(at 100% 100%, hsl(186 100% 96%) 0px, transparent 50%),
+                     radial-gradient(at 50% 50%, hsl(280 70% 98%) 0px, transparent 50%);
     --gradient-glass: linear-gradient(135deg, 
                       hsla(0, 0%, 100%, 0.8) 0%, 
                       hsla(0, 0%, 100%, 0.4) 100%);
+    
+    /* Category Gradients */
+    --gradient-food: linear-gradient(135deg, hsl(15 85% 60%), hsl(25 90% 65%));
+    --gradient-transport: linear-gradient(135deg, hsl(210 85% 60%), hsl(220 80% 70%));
+    --gradient-entertainment: linear-gradient(135deg, hsl(280 70% 65%), hsl(300 65% 70%));
+    --gradient-shopping: linear-gradient(135deg, hsl(140 60% 55%), hsl(155 65% 60%));
+    --gradient-daily: linear-gradient(135deg, hsl(35 80% 60%), hsl(45 75% 65%));
 
     /* Apple-style Shadows */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
@@ -196,6 +211,14 @@ All colors MUST be HSL.
     animation: shimmer 2s linear infinite;
   }
 
+  .animate-breath {
+    animation: breath 3s ease-in-out infinite;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounce-subtle 2s ease-in-out infinite;
+  }
+
   /* Gradient backgrounds */
   .bg-gradient-primary {
     background: var(--gradient-primary);
@@ -207,6 +230,27 @@ All colors MUST be HSL.
 
   .bg-gradient-hero {
     background: var(--gradient-hero);
+  }
+
+  /* Category gradient backgrounds */
+  .bg-gradient-food {
+    background: var(--gradient-food);
+  }
+
+  .bg-gradient-transport {
+    background: var(--gradient-transport);
+  }
+
+  .bg-gradient-entertainment {
+    background: var(--gradient-entertainment);
+  }
+
+  .bg-gradient-shopping {
+    background: var(--gradient-shopping);
+  }
+
+  .bg-gradient-daily {
+    background: var(--gradient-daily);
   }
 
   /* Apple-style Shadow utilities */
@@ -319,5 +363,25 @@ All colors MUST be HSL.
   }
   100% {
     background-position: 200% center;
+  }
+}
+
+@keyframes breath {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }
