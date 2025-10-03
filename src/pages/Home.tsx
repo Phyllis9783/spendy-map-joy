@@ -3,6 +3,7 @@ import { TrendingUp, MapPin, Users, Clock, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
+import EditExpenseDialog from "@/components/EditExpenseDialog";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -75,6 +76,33 @@ const Home = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEdit = async (expenseId: string, updatedData: Partial<Expense>) => {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .update(updatedData)
+        .eq('id', expenseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "修改成功",
+        description: "消費記錄已更新",
+      });
+
+      // Refresh the list
+      fetchExpenses();
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      toast({
+        title: "修改失敗",
+        description: "無法更新消費記錄，請重試",
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -242,6 +270,10 @@ const Home = () => {
                       </p>
                       <p className="text-xs text-muted-foreground">TWD</p>
                     </div>
+                    <EditExpenseDialog
+                      expense={expense}
+                      onSave={handleEdit}
+                    />
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button

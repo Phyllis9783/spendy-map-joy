@@ -53,12 +53,14 @@ serve(async (req) => {
    - 如果無法確定，優先選擇 daily
 
 3. 時間解析（expense_date）：
-   - "今天"、"今日" → 當天日期
-   - "昨天"、"昨日" → 前一天
-   - "中午"、"午餐" → 12:00
-   - "晚上"、"晚餐" → 19:00
-   - "早上"、"早餐" → 08:00
-   - 如果沒提到，使用當前時間
+   - **重要：使用台北時區 (UTC+8)，格式必須是 "2024-10-03T12:00:00+08:00"**
+   - "今天"、"今日" → 當天日期（台北時區）
+   - "昨天"、"昨日" → 前一天（台北時區）
+   - "中午"、"午餐" → 12:00（台北時區）
+   - "晚上"、"晚餐" → 19:00（台北時區）
+   - "早上"、"早餐" → 08:00（台北時區）
+   - 如果沒提到時間，使用當前時間（台北時區）
+   - **絕對不要使用 UTC 時間（不要用 Z 後綴）**
 
 4. 地點提取（location_name）：
    - 品牌名稱：星巴克、麥當勞、全家、7-11
@@ -75,27 +77,27 @@ serve(async (req) => {
   "expense_date": "<ISO 8601格式>"
 }
 
-【範例】
+【範例】（所有時間都使用台北時區 +08:00）
 輸入："今天中午在星巴克花了150元買咖啡"
-輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-03T12:00:00Z"}
+輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-03T12:00:00+08:00"}
 
 輸入："昨天晚上計程車回家80塊"
-輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "2024-10-02T19:00:00Z"}
+輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "2024-10-02T19:00:00+08:00"}
 
 輸入："圍棋米粉100個¥10午餐"
-輸出：{"amount": 10, "category": "food", "description": "圍棋米粉", "location_name": null, "expense_date": "2024-10-03T12:00:00Z"}
+輸出：{"amount": 10, "category": "food", "description": "圍棋米粉", "location_name": null, "expense_date": "2024-10-03T12:00:00+08:00"}
 
 輸入："公司樓下買了一杯珍奶五十五"
-輸出：{"amount": 55, "category": "food", "description": "珍珠奶茶", "location_name": "公司樓下", "expense_date": "2024-10-03T14:00:00Z"}
+輸出：{"amount": 55, "category": "food", "description": "珍珠奶茶", "location_name": "公司樓下", "expense_date": "2024-10-03T14:00:00+08:00"}
 
 輸入："看電影兩百"
-輸出：{"amount": 200, "category": "entertainment", "description": "電影", "location_name": null, "expense_date": "2024-10-03T20:00:00Z"}
+輸出：{"amount": 200, "category": "entertainment", "description": "電影", "location_name": null, "expense_date": "2024-10-03T20:00:00+08:00"}
 
 輸入："昨天晚上在星巴克花了一百五買咖啡"
-輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-02T19:00:00Z"}
+輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-02T19:00:00+08:00"}
 
 輸入："買菜花了三百塊在菜市場"
-輸出：{"amount": 300, "category": "daily", "description": "買菜", "location_name": "菜市場", "expense_date": "2024-10-03T10:00:00Z"}
+輸出：{"amount": 300, "category": "daily", "description": "買菜", "location_name": "菜市場", "expense_date": "2024-10-03T10:00:00+08:00"}
 
 請只回應 JSON，不要有其他內容。`
           },
