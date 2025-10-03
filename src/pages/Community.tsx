@@ -95,26 +95,71 @@ const Community = () => {
   const fetchShares = async () => {
     try {
       setSharesLoading(true);
-      const { data, error } = await supabase
+      // 1) Fetch public shares first (no embeddings to avoid FK requirements)
+      const { data: sharesData, error: sharesError } = await supabase
         .from('shares')
-        .select(`
-          *,
-          expenses!inner (*),
-          profiles!inner (full_name, avatar_url)
-        `)
+        .select('id, user_id, expense_id, share_text, likes_count, created_at')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
         .limit(20);
 
-      if (error) throw error;
+      if (sharesError) throw sharesError;
+      if (!sharesData || sharesData.length === 0) {
+        setShares([]);
+        return;
+      }
 
-      setShares(data || []);
+      // 2) Batch fetch related expenses and profiles
+      const expenseIds = Array.from(new Set(
+        sharesData.filter(s => !!s.expense_id).map(s => s.expense_id as string)
+      ));
+      const userIds = Array.from(new Set(sharesData.map(s => s.user_id)));
+
+      const expensesPromise =
+        expenseIds.length > 0
+          ? supabase
+              .from('expenses')
+              .select('id, amount, category, description, location_name, location_lat, location_lng')
+              .in('id', expenseIds)
+          : Promise.resolve({ data: [] });
+
+      const profilesPromise =
+        userIds.length > 0
+          ? supabase
+              .from('profiles')
+              .select('id, full_name, avatar_url')
+              .in('id', userIds)
+          : Promise.resolve({ data: [] });
+
+      const [expensesRes, profilesRes] = await Promise.all([
+        expensesPromise as any,
+        profilesPromise as any,
+      ]);
+
+      const expensesData = (expensesRes?.data || []) as Array<any>;
+      const profilesData = (profilesRes?.data || []) as Array<any>;
+
+      const expenseMap = new Map<string, any>(
+        expensesData.map((e: any) => [e.id, e])
+      );
+      const profileMap = new Map<string, any>(
+        profilesData.map((p: any) => [p.id, p])
+      );
+
+      // 3) Merge
+      const merged = sharesData.map((s: any) => ({
+        ...s,
+        expenses: s.expense_id ? expenseMap.get(s.expense_id) || null : null,
+        profiles: profileMap.get(s.user_id) || null,
+      }));
+
+      setShares(merged);
     } catch (error) {
       console.error('Error fetching shares:', error);
       toast({
-        title: "載入失敗",
-        description: "無法載入分享內容",
-        variant: "destructive",
+        title: '載入失敗',
+        description: '無法載入分享內容',
+        variant: 'destructive',
       });
     } finally {
       setSharesLoading(false);
