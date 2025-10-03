@@ -274,6 +274,10 @@ export type Database = {
           suspicious_activity: string
         }[]
       }
+      cleanup_old_location_logs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       get_expenses_low_precision: {
         Args: Record<PropertyKey, never>
         Returns: {

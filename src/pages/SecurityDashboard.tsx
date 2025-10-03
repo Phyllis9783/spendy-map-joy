@@ -25,6 +25,13 @@ const SecurityDashboard = () => {
   const loadSecurityData = async () => {
     setLoading(true);
     try {
+      // Clean up old logs (90+ days) for data privacy compliance
+      const { cleanupOldLocationLogs } = await import('@/lib/locationSecurity');
+      const deletedCount = await cleanupOldLocationLogs();
+      if (deletedCount > 0) {
+        console.log(`Cleaned up ${deletedCount} old location access logs`);
+      }
+      
       const [logs, suspicious] = await Promise.all([
         getLocationAccessLogs(100),
         checkSuspiciousActivity(),

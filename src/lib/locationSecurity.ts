@@ -172,3 +172,24 @@ export function shouldShowPreciseLocation(context: 'map' | 'share' | 'export'): 
       return false;
   }
 }
+
+/**
+ * Clean up location access logs older than 90 days
+ * Part of Phase 1 data privacy compliance
+ * Returns the number of deleted records
+ */
+export async function cleanupOldLocationLogs(): Promise<number> {
+  try {
+    const { data, error } = await supabase.rpc('cleanup_old_location_logs');
+    
+    if (error) {
+      console.error('Error cleaning up old location logs:', error);
+      return 0;
+    }
+    
+    return data || 0;
+  } catch (error) {
+    console.error('Failed to cleanup location logs:', error);
+    return 0;
+  }
+}
