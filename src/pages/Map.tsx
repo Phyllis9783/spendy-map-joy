@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { MapPin, TrendingUp, Crown } from "lucide-react";
+import { MapPin, TrendingUp, Crown, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { GoogleMap, LoadScript, Marker, InfoWindow, Polyline } from "@react-google-maps/api";
+import { GoogleMap, LoadScript, Marker, InfoWindow, Polyline, HeatmapLayer } from "@react-google-maps/api";
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { RadialBarChart, RadialBar, ResponsiveContainer } from "recharts";
+import { useToast } from "@/hooks/use-toast";
 
 interface Expense {
   id: string;
@@ -25,13 +27,17 @@ const Map = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 25.0330, lng: 121.5654 });
+  const [mapZoom, setMapZoom] = useState(13);
   const [isHeatmapMode, setIsHeatmapMode] = useState(false);
+  const [currentExploreIndex, setCurrentExploreIndex] = useState(0);
+  const [isExploring, setIsExploring] = useState(false);
   const [stats, setStats] = useState({
     topLocation: "--",
     rangeKm: 0,
   });
   const location = useLocation();
   const focusExpense = location.state?.focusExpense;
+  const { toast } = useToast();
 
   const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -194,10 +200,57 @@ const Map = () => {
     },
   ];
 
+  // Prepare heatmap data
+  const heatmapData = expenses
+    .filter(e => e.location_lat && e.location_lng)
+    .map(e => ({
+      location: new google.maps.LatLng(e.location_lat!, e.location_lng!),
+      weight: e.amount / 1000,
+    }));
+
   const mapContainerStyle = {
     width: '100%',
     height: 'calc(100vh - 300px)',
     borderRadius: '1rem',
+  };
+
+  // Handle heatmap mode toggle
+  const handleHeatmapToggle = (checked: boolean) => {
+    setIsHeatmapMode(checked);
+    toast({
+      title: checked ? "🔥 熱力圖模式" : "📍 標記模式",
+      description: checked ? "顯示消費密度分布" : "顯示個別消費地點",
+    });
+  };
+
+  // Explore locations function
+  const handleExploreLocations = () => {
+    if (expenses.length === 0) {
+      toast({
+        title: "尚無消費記錄",
+        description: "開始記帳後即可探索地點",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExploring(true);
+    const nextIndex = (currentExploreIndex + 1) % expenses.length;
+    const expense = expenses[nextIndex];
+    
+    if (expense.location_lat && expense.location_lng) {
+      setMapCenter({ lat: expense.location_lat, lng: expense.location_lng });
+      setMapZoom(16);
+      setSelectedExpense(expense);
+      setCurrentExploreIndex(nextIndex);
+      
+      toast({
+        title: `📍 ${expense.location_name || "未知地點"}`,
+        description: `第 ${nextIndex + 1} / ${expenses.length} 個地點`,
+      });
+    }
+
+    setTimeout(() => setIsExploring(false), 1000);
   };
 
   return (
@@ -216,15 +269,28 @@ const Map = () => {
           探索你的消費足跡，視覺化每筆花費
         </p>
         
-        <div className="flex items-center gap-2 mt-3">
-          <Switch
-            id="heatmap-mode"
-            checked={isHeatmapMode}
-            onCheckedChange={setIsHeatmapMode}
-          />
-          <Label htmlFor="heatmap-mode" className="text-sm cursor-pointer">
-            🔥 熱力圖模式
-          </Label>
+        <div className="flex items-center justify-between mt-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="heatmap-mode"
+              checked={isHeatmapMode}
+              onCheckedChange={handleHeatmapToggle}
+            />
+            <Label htmlFor="heatmap-mode" className="text-sm cursor-pointer">
+              🔥 熱力圖模式
+            </Label>
+          </div>
+          
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleExploreLocations}
+            disabled={isExploring || expenses.length === 0}
+            className="gap-2"
+          >
+            <Navigation className="w-4 h-4" />
+            探索地點
+          </Button>
         </div>
       </motion.header>
 
@@ -238,7 +304,7 @@ const Map = () => {
             <GoogleMap
               mapContainerStyle={mapContainerStyle}
               center={mapCenter}
-              zoom={13}
+              zoom={mapZoom}
               options={{
                 styles: darkMapStyles,
                 disableDefaultUI: false,
@@ -248,6 +314,32 @@ const Map = () => {
                 fullscreenControl: true,
               }}
             >
+              {/* Heatmap Layer */}
+              {isHeatmapMode && heatmapData.length > 0 && (
+                <HeatmapLayer
+                  data={heatmapData}
+                  options={{
+                    radius: 30,
+                    opacity: 0.7,
+                    gradient: [
+                      "rgba(0, 255, 255, 0)",
+                      "rgba(0, 255, 255, 1)",
+                      "rgba(0, 191, 255, 1)",
+                      "rgba(0, 127, 255, 1)",
+                      "rgba(0, 63, 255, 1)",
+                      "rgba(0, 0, 255, 1)",
+                      "rgba(0, 0, 223, 1)",
+                      "rgba(0, 0, 191, 1)",
+                      "rgba(0, 0, 159, 1)",
+                      "rgba(0, 0, 127, 1)",
+                      "rgba(63, 0, 91, 1)",
+                      "rgba(127, 0, 63, 1)",
+                      "rgba(191, 0, 31, 1)",
+                      "rgba(255, 0, 0, 1)",
+                    ],
+                  }}
+                />
+              )}
               {/* Polyline connecting expense locations */}
               {!isHeatmapMode && polylinePath.length > 1 && (
                 <Polyline
