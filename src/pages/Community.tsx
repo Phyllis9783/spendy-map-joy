@@ -1,4 +1,4 @@
-import { Trophy, Target, TrendingUp } from "lucide-react";
+import { Trophy, Target, TrendingUp, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Progress } from "@/components/ui/progress";
 import { trackAllChallenges } from "@/lib/challengeTracker";
+import ShareCard from "@/components/ShareCard";
+import { Skeleton } from "@/components/ui/skeleton";
 import * as LucideIcons from "lucide-react";
 
 interface Challenge {
@@ -36,12 +38,15 @@ interface ChallengeWithUserData extends Challenge {
 
 const Community = () => {
   const [challenges, setChallenges] = useState<ChallengeWithUserData[]>([]);
+  const [shares, setShares] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sharesLoading, setSharesLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchChallenges();
+    fetchShares();
   }, []);
 
   const fetchChallenges = async () => {
@@ -84,6 +89,35 @@ const Community = () => {
       console.error('Error fetching challenges:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchShares = async () => {
+    try {
+      setSharesLoading(true);
+      const { data, error } = await supabase
+        .from('shares')
+        .select(`
+          *,
+          expenses!inner (*),
+          profiles!inner (full_name, avatar_url)
+        `)
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      setShares(data || []);
+    } catch (error) {
+      console.error('Error fetching shares:', error);
+      toast({
+        title: "載入失敗",
+        description: "無法載入分享內容",
+        variant: "destructive",
+      });
+    } finally {
+      setSharesLoading(false);
     }
   };
 
@@ -242,10 +276,37 @@ const Community = () => {
 
           {/* Shares Tab */}
           <TabsContent value="shares" className="mt-6">
-            <div className="text-center py-12 text-muted-foreground">
-              <p>還沒有分享</p>
-              <p className="text-sm mt-2">分享你的消費記錄給朋友吧</p>
-            </div>
+            {sharesLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i} className="p-4 glass-card">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-16 w-full" />
+                      <Skeleton className="h-20 w-full" />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : shares.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p>還沒有分享</p>
+                <p className="text-sm mt-2">成為第一個分享消費心得的人吧！</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {shares.map((share) => (
+                  <ShareCard key={share.id} share={share} />
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

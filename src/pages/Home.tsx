@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
 import EditExpenseDialog from "@/components/EditExpenseDialog";
+import CreateShareDialog from "@/components/CreateShareDialog";
+import ExpenseStatsDialog from "@/components/ExpenseStatsDialog";
 import { logLocationAccess } from "@/lib/locationSecurity";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -38,6 +40,10 @@ const Home = () => {
   });
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statsDialogOpen, setStatsDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [selectedExpenseForShare, setSelectedExpenseForShare] = useState<Expense | null>(null);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const {
     toast
   } = useToast();
@@ -45,42 +51,64 @@ const Home = () => {
   const fetchExpenses = async () => {
     try {
       const {
-        data,
-        error
-      } = await supabase.from('expenses').select('*').order('expense_date', {
-        ascending: false
-      }).limit(5);
-      if (error) throw error;
-      setExpenses(data || []);
-      if (data) {
-        const total = data.reduce((sum, exp) => sum + Number(exp.amount), 0);
-        const locations = new Set(data.map(exp => exp.location_name).filter(Boolean));
-        setStats({
-          totalAmount: total,
-          locationCount: locations.size,
-          shareCount: 0
-        });
-      }
-
-      // Fetch challenge stats
-      const {
         data: {
           user
         }
       } = await supabase.auth.getUser();
-      if (user) {
-        await trackAllChallenges(user.id);
-        const {
-          data: challengesData
-        } = await supabase.from('user_challenges').select('status').eq('user_id', user.id);
-        if (challengesData) {
-          const active = challengesData.filter(c => c.status === 'active').length;
-          const completed = challengesData.filter(c => c.status === 'completed').length;
-          setChallengeStats({
-            active,
-            completed
-          });
-        }
+      
+      if (!user) throw new Error('Not authenticated');
+
+      // Calculate 30 days ago date
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Fetch last 30 days expenses
+      const { data: allExpenses, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .gte('expense_date', thirtyDaysAgo.toISOString())
+        .order('expense_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Store all expenses for stats dialog
+      setAllExpenses(allExpenses || []);
+      
+      // Set recent 5 expenses for display
+      setExpenses(allExpenses?.slice(0, 5) || []);
+
+      // Calculate stats from all 30-day expenses
+      if (allExpenses) {
+        const total = allExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+        const locations = new Set(allExpenses.map(exp => exp.location_name).filter(Boolean));
+        
+        // Fetch real share count
+        const { count: shareCount } = await supabase
+          .from('shares')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+
+        setStats({
+          totalAmount: total,
+          locationCount: locations.size,
+          shareCount: shareCount || 0
+        });
+      }
+
+      // Fetch challenge stats
+      await trackAllChallenges(user.id);
+      const { data: challengesData } = await supabase
+        .from('user_challenges')
+        .select('status')
+        .eq('user_id', user.id);
+        
+      if (challengesData) {
+        const active = challengesData.filter(c => c.status === 'active').length;
+        const completed = challengesData.filter(c => c.status === 'completed').length;
+        setChallengeStats({
+          active,
+          completed
+        });
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
@@ -247,7 +275,10 @@ const Home = () => {
         type: "spring",
         stiffness: 300
       }}>
-          <Card className="glass-card border-primary/20 shadow-lg">
+          <Card 
+            className="glass-card border-primary/20 shadow-lg cursor-pointer hover:border-primary/40 transition-colors"
+            onClick={() => setStatsDialogOpen(true)}
+          >
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <motion.div animate={{
@@ -262,7 +293,7 @@ const Home = () => {
                 <p className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                   $<CountUp end={stats.totalAmount} duration={1.5} />
                 </p>
-                <p className="text-xs text-muted-foreground font-medium">總消費金額</p>
+                <p className="text-xs text-muted-foreground font-medium">最近30天消費</p>
               </div>
             </CardContent>
           </Card>
@@ -482,6 +513,20 @@ const Home = () => {
                   <div className="flex gap-2 pt-2">
                     <EditExpenseDialog expense={expense} onSave={handleEdit} />
                     
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedExpenseForShare(expense);
+                        setShareDialogOpen(true);
+                      }}
+                      className="flex-1 hover:bg-accent/10 hover:border-accent transition-all"
+                    >
+                      <Share2 className="w-4 h-4 mr-1" />
+                      分享
+                    </Button>
+
                     {expense.location_lat && expense.location_lng && <Button variant="outline" size="sm" onClick={() => navigate("/map", {
                 state: {
                   focusExpense: expense
@@ -517,6 +562,23 @@ const Home = () => {
               </Card>
             </motion.div>)}
       </motion.div>
+
+      {/* Stats Dialog */}
+      <ExpenseStatsDialog
+        open={statsDialogOpen}
+        onOpenChange={setStatsDialogOpen}
+        expenses={allExpenses}
+        totalAmount={stats.totalAmount}
+        dateRange="最近 30 天"
+      />
+
+      {/* Share Dialog */}
+      <CreateShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        expense={selectedExpenseForShare}
+        onSuccess={fetchExpenses}
+      />
     </div>;
 };
 export default Home;

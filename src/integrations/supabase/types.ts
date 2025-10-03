@@ -257,6 +257,35 @@ export type Database = {
           },
         ]
       }
+      user_share_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          share_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          share_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          share_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_share_likes_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -298,6 +327,10 @@ export type Database = {
       }
       log_location_access: {
         Args: { _access_type: string; _expense_id: string }
+        Returns: undefined
+      }
+      toggle_share_like: {
+        Args: { share_id_input: string }
         Returns: undefined
       }
       user_owns_expense: {

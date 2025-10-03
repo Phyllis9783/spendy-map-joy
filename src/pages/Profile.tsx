@@ -50,15 +50,10 @@ const Profile = () => {
 
   const fetchStats = async () => {
     try {
-      // Get current month expenses
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
-
+      // Get ALL expenses (no date filter)
       const { data, error } = await supabase
         .from('expenses')
-        .select('amount')
-        .gte('expense_date', startOfMonth.toISOString());
+        .select('amount');
 
       if (error) throw error;
 
@@ -113,7 +108,7 @@ const Profile = () => {
         <Card className="p-6 glass-card shadow-md interactive-lift">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">本月總消費</p>
+              <p className="text-sm text-muted-foreground">總消費</p>
               <p className="text-3xl font-bold mt-1">NT$ {Math.round(stats.monthlyTotal)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-primary" />
