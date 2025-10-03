@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, MapPin, Users, Clock, Trash2, Edit2, DollarSign, Calendar, Share2, Map as MapIcon, Trophy, Target } from "lucide-react";
+import { TrendingUp, MapPin, Clock, Trash2, Edit2, DollarSign, Calendar, Share2, Map as MapIcon, Trophy } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
@@ -31,8 +31,7 @@ const Home = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [stats, setStats] = useState({
     totalAmount: 0,
-    locationCount: 0,
-    shareCount: 0
+    locationCount: 0
   });
   const [challengeStats, setChallengeStats] = useState({
     active: 0,
@@ -81,17 +80,10 @@ const Home = () => {
       if (allExpenses) {
         const total = allExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
         const locations = new Set(allExpenses.map(exp => exp.location_name).filter(Boolean));
-        
-        // Fetch real share count
-        const { count: shareCount } = await supabase
-          .from('shares')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id);
 
         setStats({
           totalAmount: total,
-          locationCount: locations.size,
-          shareCount: shareCount || 0
+          locationCount: locations.size
         });
       }
 
@@ -258,7 +250,7 @@ const Home = () => {
       </motion.div>
 
       {/* Quick Stats */}
-      <motion.div className="max-w-4xl mx-auto px-6 mt-12 grid grid-cols-3 gap-4" initial={{
+      <motion.div className="max-w-4xl mx-auto px-6 mt-12 grid grid-cols-2 gap-4" initial={{
       opacity: 0,
       y: 20
     }} animate={{
@@ -330,32 +322,6 @@ const Home = () => {
           </Card>
         </motion.div>
 
-        <motion.div whileHover={{
-        scale: 1.05,
-        y: -5
-      }} transition={{
-        type: "spring",
-        stiffness: 300
-      }}>
-          <Card className="glass-card border-accent/20 shadow-lg">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-2">
-                <motion.div animate={{
-                scale: [1, 1.1, 1]
-              }} transition={{
-                duration: 2,
-                repeat: Infinity
-              }}>
-                  <Share2 className="w-8 h-8 mx-auto text-accent" />
-                </motion.div>
-                <p className="text-3xl font-bold text-accent">
-                  <CountUp end={stats.shareCount} duration={1.5} />
-                </p>
-                <p className="text-xs text-muted-foreground font-medium">分享次數</p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
       </motion.div>
 
       {/* Challenge Progress Card */}
@@ -488,7 +454,9 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      
+                      <p className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                        ${expense.amount}
+                      </p>
                     </div>
                   </CardTitle>
                 </CardHeader>

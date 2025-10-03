@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "./pages/Home";
 import Map from "./pages/Map";
-import Community from "./pages/Community";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -57,15 +56,6 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Map />
-                <BottomNav />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/community"
-            element={
-              <ProtectedRoute>
-                <Community />
                 <BottomNav />
               </ProtectedRoute>
             }
