@@ -415,28 +415,35 @@ const Home = () => {
               <p className="text-muted-foreground text-lg font-medium">尚無消費記錄</p>
               <p className="text-sm text-muted-foreground mt-2">🎤 使用語音輸入開始你的記帳冒險吧！</p>
             </CardContent>
-          </Card> : expenses.map((expense, index) => <motion.div key={expense.id} initial={{
-        opacity: 0,
-        x: -20
-      }} animate={{
-        opacity: 1,
-        x: 0
-      }} transition={{
-        duration: 0.4,
-        delay: index * 0.1
-      }} whileHover={{
-        scale: 1.02,
-        y: -2
-      }}>
+          </Card> : expenses.map((expense, index) => <motion.div 
+              key={expense.id} 
+              initial={{
+                opacity: 0,
+                x: -20
+              }} 
+              animate={{
+                opacity: 1,
+                x: 0
+              }} 
+              transition={{
+                duration: 0.4,
+                delay: index * 0.1
+              }} 
+              whileHover={{
+                scale: 1.02,
+                y: -2
+              }}
+              onClick={() => {
+                setSelectedExpenseForDetail(expense);
+                setDetailDialogOpen(true);
+              }}
+              className="cursor-pointer"
+            >
               <Card 
-                className={`glass-card hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden cursor-pointer ${expense.category === 'food' ? 'border-l-[hsl(var(--category-food))]' : expense.category === 'transport' ? 'border-l-[hsl(var(--category-transport))]' : expense.category === 'entertainment' ? 'border-l-[hsl(var(--category-entertainment))]' : expense.category === 'shopping' ? 'border-l-[hsl(var(--category-shopping))]' : 'border-l-[hsl(var(--category-daily))]'}`}
-                onClick={() => {
-                  setSelectedExpenseForDetail(expense);
-                  setDetailDialogOpen(true);
-                }}
+                className={`glass-card hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden ${expense.category === 'food' ? 'border-l-[hsl(var(--category-food))]' : expense.category === 'transport' ? 'border-l-[hsl(var(--category-transport))]' : expense.category === 'entertainment' ? 'border-l-[hsl(var(--category-entertainment))]' : expense.category === 'shopping' ? 'border-l-[hsl(var(--category-shopping))]' : 'border-l-[hsl(var(--category-daily))]'}`}
               >
                 {/* Decorative background gradient */}
-                <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 ${getCategoryGradient(expense.category)}`} style={{
+                <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none ${getCategoryGradient(expense.category)}`} style={{
             borderRadius: '0 0 0 100%'
           }} />
                 
@@ -488,7 +495,9 @@ const Home = () => {
                   </div>
 
                   <div className="flex gap-2 pt-2">
-                    <EditExpenseDialog expense={expense} onSave={handleEdit} />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <EditExpenseDialog expense={expense} onSave={handleEdit} />
+                    </div>
                     
                     <Button
                       size="sm"
@@ -504,36 +513,46 @@ const Home = () => {
                       分享
                     </Button>
 
-                    {expense.location_lat && expense.location_lng && <Button variant="outline" size="sm" onClick={() => navigate("/map", {
-                state: {
-                  focusExpense: expense
-                }
-              })} className="flex-1 hover:bg-secondary/10 hover:border-secondary transition-all">
+                    {expense.location_lat && expense.location_lng && <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate("/map", {
+                          state: {
+                            focusExpense: expense
+                          }
+                        });
+                      }} 
+                      className="flex-1 hover:bg-secondary/10 hover:border-secondary transition-all"
+                    >
                         <MapPin className="w-4 h-4 mr-1" />
                         地圖
                       </Button>}
                     
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="hover:scale-105 transition-transform" disabled={deletingId === expense.id}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>確認刪除</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            確定要刪除這筆消費記錄嗎？此操作無法復原。
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>取消</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(expense.id)} className="bg-destructive hover:bg-destructive/90">
-                            刪除
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" className="hover:scale-105 transition-transform" disabled={deletingId === expense.id}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              確定要刪除這筆消費記錄嗎？此操作無法復原。
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>取消</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(expense.id)} className="bg-destructive hover:bg-destructive/90">
+                              刪除
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
