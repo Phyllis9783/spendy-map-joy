@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { Pencil } from "lucide-react";
+import { logLocationAccess } from "@/lib/locationSecurity";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +58,18 @@ const EditExpenseDialog = ({ expense, onSave }: EditExpenseDialogProps) => {
 
     setSaving(true);
     try {
+      // Check if expense has location data
+      const { data: expenseData } = await supabase
+        .from('expenses')
+        .select('location_lat, location_lng')
+        .eq('id', expense.id)
+        .single();
+      
+      // Log location access if expense has coordinates
+      if (expenseData && expenseData.location_lat && expenseData.location_lng) {
+        await logLocationAccess(expense.id, 'update');
+      }
+      
       await onSave(expense.id, {
         amount: parsedAmount,
         category,

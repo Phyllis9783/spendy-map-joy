@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
 import EditExpenseDialog from "@/components/EditExpenseDialog";
+import { logLocationAccess } from "@/lib/locationSecurity";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -126,6 +127,14 @@ const Home = () => {
   const handleDelete = async (expenseId: string) => {
     setDeletingId(expenseId);
     try {
+      // Get expense data to check for location
+      const expense = expenses.find(e => e.id === expenseId);
+      
+      // Log location access if expense has location data
+      if (expense && expense.location_lat && expense.location_lng) {
+        await logLocationAccess(expenseId, 'delete');
+      }
+      
       const {
         error
       } = await supabase.from('expenses').delete().eq('id', expenseId);

@@ -3,6 +3,7 @@ import { MapPin, TrendingUp, Crown, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GoogleMap, LoadScript, Marker, InfoWindow, Polyline, HeatmapLayer } from "@react-google-maps/api";
 import { Card } from "@/components/ui/card";
+import { logLocationAccess } from "@/lib/locationSecurity";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -588,7 +589,10 @@ const Map = () => {
                     <Marker
                       key={expense.id}
                       position={{ lat: expense.location_lat, lng: expense.location_lng }}
-                      onClick={() => setSelectedExpense(expense)}
+                      onClick={async () => {
+                        setSelectedExpense(expense);
+                        await logLocationAccess(expense.id, 'view');
+                      }}
                       icon={{
                         path: google.maps.SymbolPath.CIRCLE,
                         fillColor: getCategoryColor(expense.category),

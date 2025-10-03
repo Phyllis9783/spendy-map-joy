@@ -1,10 +1,12 @@
-import { User, Settings, Database, TrendingUp, Award, LogOut, Shield } from "lucide-react";
+import { User, Settings, Database, TrendingUp, Award, LogOut, Shield, CheckCircle, AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { checkSuspiciousActivity } from "@/lib/locationSecurity";
 
 interface Profile {
   full_name: string | null;
@@ -20,11 +22,13 @@ const Profile = () => {
     monthlyTotal: 0,
     badges: 0,
   });
+  const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning'>('safe');
 
   useEffect(() => {
     if (user) {
       fetchProfile();
       fetchStats();
+      checkSecurity();
     }
   }, [user]);
 
@@ -73,6 +77,15 @@ const Profile = () => {
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const checkSecurity = async () => {
+    try {
+      const suspicious = await checkSuspiciousActivity();
+      setSecurityStatus(suspicious.length > 0 ? 'warning' : 'safe');
+    } catch (error) {
+      console.error('Error checking security:', error);
     }
   };
 
@@ -126,7 +139,18 @@ const Profile = () => {
           className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]"
         >
           <Shield className="w-5 h-5 mr-3" />
-          <span>隱私與安全</span>
+          <span className="flex-1 text-left">隱私與安全</span>
+          {securityStatus === 'safe' ? (
+            <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              安全
+            </Badge>
+          ) : (
+            <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              注意
+            </Badge>
+          )}
         </Button>
 
         <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
