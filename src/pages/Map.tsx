@@ -284,7 +284,7 @@ const Map = () => {
     setTimeout(() => setIsExploring(false), 1000);
   };
 
-  // Geocode missing locations
+  // Geocode missing locations with smart Taiwan context
   const geocodeMissingExpenses = async () => {
     if (!GOOGLE_MAPS_API_KEY) {
       toast({
@@ -319,6 +319,27 @@ const Map = () => {
         return;
       }
 
+      // 常見簡稱對照表
+      const locationAliases: Record<string, string> = {
+        '北車': '台北車站',
+        '西門': '西門町',
+        '東區': '台北東區',
+        '信義': '信義區',
+        '天母': '天母商圈',
+        '士林': '士林夜市',
+        '師大': '師大夜市',
+        '公館': '公館商圈',
+        '中山': '中山區',
+        '南港': '南港區',
+        '內湖': '內湖區',
+        '大安': '大安區',
+        '松山': '松山區',
+        '萬華': '萬華區',
+        '中正': '中正區',
+        '大直': '大直商圈',
+        '天幕': '微風南山天幕劇院',
+      };
+
       toast({
         title: "🔄 開始補齊座標",
         description: `正在處理 ${missingExpenses.length} 筆記錄...`,
@@ -326,45 +347,103 @@ const Map = () => {
 
       let successCount = 0;
       let failCount = 0;
+      const failedLocations: string[] = [];
 
       for (const expense of missingExpenses) {
         try {
-          const response = await fetch(
-            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(expense.location_name)}&key=${GOOGLE_MAPS_API_KEY}`
-          );
-          const data = await response.json();
+          const originalName = expense.location_name;
+          const expandedName = locationAliases[originalName] || originalName;
+          
+          // 多重搜尋策略
+          const searchQueries = [
+            `${expandedName}, 台灣`,
+            `${expandedName}, 台北市, 台灣`,
+            `${originalName}, Taiwan`,
+          ];
 
-          if (data.status === 'OK' && data.results[0]) {
-            const { lat, lng } = data.results[0].geometry.location;
+          let geocodeSuccess = false;
+
+          for (const query of searchQueries) {
+            const response = await fetch(
+              `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+                query
+              )}&key=${GOOGLE_MAPS_API_KEY}&region=tw&language=zh-TW`
+            );
             
-            await supabase
-              .from('expenses')
-              .update({
-                location_lat: lat,
-                location_lng: lng,
-              })
-              .eq('id', expense.id);
+            const data = await response.json();
+            
+            console.log(`🔍 搜尋 "${query}": ${data.status}`, data.results?.[0]?.formatted_address || 'N/A');
+            
+            if (data.status === 'OK' && data.results[0]) {
+              const { lat, lng } = data.results[0].geometry.location;
+              
+              const { error: updateError } = await supabase
+                .from('expenses')
+                .update({
+                  location_lat: lat,
+                  location_lng: lng,
+                })
+                .eq('id', expense.id);
 
-            successCount++;
-          } else {
-            failCount++;
+              if (updateError) {
+                console.error(`❌ 更新失敗 (${originalName}):`, updateError);
+              } else {
+                successCount++;
+                geocodeSuccess = true;
+                console.log(`✅ 成功: ${originalName} -> ${data.results[0].formatted_address}`);
+                break;
+              }
+            } else if (data.status === 'ZERO_RESULTS') {
+              console.log(`⚠️ 無結果: "${query}"`);
+              continue;
+            } else if (data.status === 'REQUEST_DENIED') {
+              console.error('🚫 API 金鑰錯誤或權限不足:', data.error_message);
+              toast({
+                title: "API 錯誤",
+                description: "Google Maps API 金鑰未啟用 Geocoding API",
+                variant: "destructive",
+              });
+              setIsGeocoding(false);
+              return;
+            } else {
+              console.error(`❌ API 錯誤 (${query}):`, data.status, data.error_message);
+              break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
 
-          // Add delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 200));
+          if (!geocodeSuccess) {
+            failCount++;
+            failedLocations.push(originalName);
+            console.log(`❌ 全部嘗試失敗: ${originalName}`);
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 300));
         } catch (err) {
-          console.error('Geocoding error for expense:', expense.id, err);
+          console.error(`❌ 處理失敗 (${expense.location_name}):`, err);
           failCount++;
+          failedLocations.push(expense.location_name);
         }
       }
 
-      toast({
-        title: "✅ 座標補齊完成",
-        description: `成功: ${successCount} 筆 | 失敗: ${failCount} 筆`,
-      });
-
-      // Refresh expenses
-      fetchExpenses();
+      if (successCount > 0) {
+        toast({
+          title: "✅ 座標補齊完成",
+          description: `成功補齊 ${successCount} 個地點！`,
+        });
+        fetchExpenses();
+      }
+      
+      if (failCount > 0) {
+        console.log('❌ 失敗的地點:', failedLocations);
+        toast({
+          title: "部分地點補齊失敗",
+          description: `${failCount} 個地點: ${failedLocations.join('、')}。建議使用完整地址，例如「星巴克信義威秀門市」`,
+          variant: "destructive",
+          duration: 6000,
+        });
+      }
     } catch (error) {
       console.error('Error geocoding expenses:', error);
       toast({
