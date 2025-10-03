@@ -454,7 +454,7 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                      <p className="text-2xl font-bold text-foreground">
                         ${expense.amount}
                       </p>
                     </div>

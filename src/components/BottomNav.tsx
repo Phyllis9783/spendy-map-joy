@@ -1,4 +1,4 @@
-import { Home, Map, User } from "lucide-react";
+import { Home, Map, User, Trophy } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -8,6 +8,7 @@ const BottomNav = () => {
   const navItems = [
     { icon: Home, label: "首頁", path: "/" },
     { icon: Map, label: "地圖", path: "/map" },
+    { icon: Trophy, label: "挑戰", path: "/my-challenges" },
     { icon: User, label: "我的", path: "/profile" },
   ];
 
