@@ -262,6 +262,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_share_expense: {
+        Args: { _expense_id: string }
+        Returns: boolean
+      }
       check_suspicious_location_access: {
         Args: { _user_id: string }
         Returns: {
