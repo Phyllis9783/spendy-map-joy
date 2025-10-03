@@ -5,6 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { Progress } from "@/components/ui/progress";
+import { trackAllChallenges } from "@/lib/challengeTracker";
+import * as LucideIcons from "lucide-react";
 
 interface Challenge {
   id: string;
@@ -18,10 +22,23 @@ interface Challenge {
   color: string;
 }
 
+interface UserChallenge {
+  id: string;
+  challenge_id: string;
+  current_amount: number;
+  status: string;
+  started_at: string;
+}
+
+interface ChallengeWithUserData extends Challenge {
+  userChallenge?: UserChallenge;
+}
+
 const Community = () => {
-  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeWithUserData[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchChallenges();
@@ -29,14 +46,40 @@ const Community = () => {
 
   const fetchChallenges = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Fetch all active challenges
+      const { data: challengesData, error: challengesError } = await supabase
         .from('challenges')
         .select('*')
         .eq('is_active', true);
 
-      if (error) throw error;
+      if (challengesError) throw challengesError;
 
-      setChallenges(data || []);
+      // If user is logged in, fetch their challenge participation
+      if (user) {
+        await trackAllChallenges(user.id);
+        
+        const { data: userChallengesData, error: userChallengesError } = await supabase
+          .from('user_challenges')
+          .select('*')
+          .eq('user_id', user.id);
+
+        if (userChallengesError) throw userChallengesError;
+
+        // Merge challenges with user participation data
+        const mergedData = challengesData?.map(challenge => {
+          const userChallenge = userChallengesData?.find(uc => uc.challenge_id === challenge.id);
+          return {
+            ...challenge,
+            userChallenge
+          };
+        }) || [];
+
+        setChallenges(mergedData);
+      } else {
+        setChallenges(challengesData || []);
+      }
     } catch (error) {
       console.error('Error fetching challenges:', error);
     } finally {
@@ -75,6 +118,8 @@ const Community = () => {
         title: "參加成功！",
         description: "加油，一起完成挑戰吧！",
       });
+      
+      fetchChallenges();
     } catch (error: any) {
       console.error('Error joining challenge:', error);
       toast({
@@ -85,14 +130,23 @@ const Community = () => {
     }
   };
 
+  const getIcon = (iconName: string) => {
+    const Icon = (LucideIcons as any)[iconName] || Target;
+    return <Icon className="w-6 h-6 text-white" />;
+  };
+
   const getGradientClass = (color: string) => {
-    const gradients: { [key: string]: string } = {
-      primary: 'bg-gradient-primary',
-      secondary: 'bg-gradient-secondary',
-      accent: 'bg-gradient-primary',
-      warning: 'bg-gradient-secondary',
+    const colorMap: { [key: string]: string } = {
+      blue: "from-blue-500 to-cyan-500",
+      purple: "from-purple-500 to-pink-500",
+      amber: "from-amber-500 to-orange-500",
+      green: "from-green-500 to-emerald-500",
+      emerald: "from-emerald-500 to-teal-500",
+      teal: "from-teal-500 to-cyan-500",
+      red: "from-red-500 to-rose-500",
+      orange: "from-orange-500 to-amber-500",
     };
-    return gradients[color] || 'bg-gradient-primary';
+    return colorMap[color] || "from-primary to-primary/80";
   };
 
   return (
@@ -125,37 +179,55 @@ const Community = () => {
                 <p>目前沒有可用的挑戰</p>
               </div>
             ) : (
-              challenges.map((challenge, index) => (
-                <Card
-                  key={challenge.id}
-                  className="p-6 glass-card shadow-md interactive-lift animate-scale-in"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`w-12 h-12 ${getGradientClass(challenge.color)} rounded-full flex items-center justify-center shadow-glow`}>
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{challenge.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {challenge.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-4">
-                        <div className="flex-1 bg-muted rounded-full h-2">
-                          <div className={`${getGradientClass(challenge.color)} h-2 rounded-full`} style={{ width: '0%' }} />
-                        </div>
-                        <span className="text-sm font-medium">0/{challenge.target_amount}</span>
+              challenges.map((challenge, index) => {
+                const progress = challenge.userChallenge 
+                  ? (challenge.userChallenge.current_amount / challenge.target_amount) * 100 
+                  : 0;
+                const isJoined = !!challenge.userChallenge;
+                const isCompleted = challenge.userChallenge?.status === 'completed';
+
+                return (
+                  <Card
+                    key={challenge.id}
+                    className="p-6 glass-card shadow-md interactive-lift animate-scale-in border-2 border-primary/20"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`w-12 h-12 bg-gradient-to-br ${getGradientClass(challenge.color)} rounded-xl flex items-center justify-center shadow-glow flex-shrink-0`}>
+                        {getIcon(challenge.icon)}
                       </div>
-                      <Button
-                        onClick={() => joinChallenge(challenge.id)}
-                        className={`w-full mt-4 ${getGradientClass(challenge.color)} transition-smooth`}
-                      >
-                        參加挑戰
-                      </Button>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-lg">{challenge.title}</h3>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {challenge.description}
+                        </p>
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">進度</span>
+                            <span className="font-medium">
+                              {challenge.userChallenge?.current_amount || 0} / {challenge.target_amount}
+                            </span>
+                          </div>
+                          <Progress value={Math.min(progress, 100)} className="h-2" />
+                        </div>
+                        <Button
+                          onClick={() => {
+                            if (isJoined) {
+                              navigate('/my-challenges');
+                            } else {
+                              joinChallenge(challenge.id);
+                            }
+                          }}
+                          className={`w-full mt-4 ${isCompleted ? 'bg-green-500 hover:bg-green-600' : `bg-gradient-to-r ${getGradientClass(challenge.color)}`} text-white font-semibold shadow-lg`}
+                          disabled={isCompleted}
+                        >
+                          {isCompleted ? '已完成 ✓' : isJoined ? '查看進度' : '參加挑戰'}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                );
+              })
             )}
           </TabsContent>
 

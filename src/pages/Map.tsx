@@ -598,7 +598,6 @@ const Map = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <Card className="p-6 glass-card border-2 border-primary/20 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-primary opacity-10 rounded-full blur-3xl"></div>
               <div className="flex items-start justify-between mb-4 relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-full bg-gradient-primary shadow-glow">

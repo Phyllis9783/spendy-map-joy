@@ -10,6 +10,7 @@ import Community from "./pages/Community";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import MyChallenges from "./pages/MyChallenges";
 import BottomNav from "./components/BottomNav";
 import { Loader2 } from "lucide-react";
 
@@ -73,6 +74,15 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Profile />
+                <BottomNav />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-challenges"
+            element={
+              <ProtectedRoute>
+                <MyChallenges />
                 <BottomNav />
               </ProtectedRoute>
             }

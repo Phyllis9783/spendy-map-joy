@@ -184,6 +184,7 @@ export type Database = {
           completed_at: string | null
           current_amount: number | null
           id: string
+          progress_data: Json | null
           started_at: string | null
           status: string | null
           user_id: string
@@ -193,6 +194,7 @@ export type Database = {
           completed_at?: string | null
           current_amount?: number | null
           id?: string
+          progress_data?: Json | null
           started_at?: string | null
           status?: string | null
           user_id: string
@@ -202,6 +204,7 @@ export type Database = {
           completed_at?: string | null
           current_amount?: number | null
           id?: string
+          progress_data?: Json | null
           started_at?: string | null
           status?: string | null
           user_id?: string

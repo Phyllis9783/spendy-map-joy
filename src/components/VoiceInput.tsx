@@ -374,6 +374,13 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
       if (insertError) throw insertError;
 
+      // Track challenges after creating expense
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { trackAllChallenges: trackChallenges } = await import("@/lib/challengeTracker");
+        await trackChallenges(user.id);
+      }
+
       // Celebration!
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);

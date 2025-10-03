@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, MapPin, Users, Clock, Trash2, Edit2, DollarSign, Calendar, Share2, Map as MapIcon } from "lucide-react";
+import { TrendingUp, MapPin, Users, Clock, Trash2, Edit2, DollarSign, Calendar, Share2, Map as MapIcon, Trophy, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { trackAllChallenges } from "@/lib/challengeTracker";
 
 interface Expense {
   id: string;
@@ -41,6 +42,10 @@ const Home = () => {
     totalAmount: 0,
     locationCount: 0,
     shareCount: 0,
+  });
+  const [challengeStats, setChallengeStats] = useState({
+    active: 0,
+    completed: 0,
   });
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -69,6 +74,23 @@ const Home = () => {
           shareCount: 0,
         });
       }
+      
+      // Fetch challenge stats
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await trackAllChallenges(user.id);
+        
+        const { data: challengesData } = await supabase
+          .from('user_challenges')
+          .select('status')
+          .eq('user_id', user.id);
+        
+        if (challengesData) {
+          const active = challengesData.filter(c => c.status === 'active').length;
+          const completed = challengesData.filter(c => c.status === 'completed').length;
+          setChallengeStats({ active, completed });
+        }
+      }
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast({
@@ -94,6 +116,12 @@ const Home = () => {
         title: "修改成功",
         description: "消費記錄已更新",
       });
+
+      // Track challenges after editing expense
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await trackAllChallenges(user.id);
+      }
 
       fetchExpenses();
     } catch (error) {
@@ -266,6 +294,49 @@ const Home = () => {
                   <CountUp end={stats.shareCount} duration={1.5} />
                 </p>
                 <p className="text-xs text-muted-foreground font-medium">分享次數</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
+
+      {/* Challenge Progress Card */}
+      <motion.div 
+        className="max-w-4xl mx-auto px-6 mt-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+      >
+        <motion.div whileHover={{ scale: 1.02, y: -3 }} transition={{ type: "spring", stiffness: 300 }}>
+          <Card 
+            className="glass-card border-2 border-primary/30 shadow-xl cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => navigate("/my-challenges")}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="p-4 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg"
+                >
+                  <Trophy className="w-8 h-8 text-white" />
+                </motion.div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">挑戰進度</h3>
+                  <p className="text-sm text-muted-foreground">點擊查看你的挑戰成就</p>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-2xl font-bold text-blue-400">{challengeStats.active}</p>
+                      <p className="text-xs text-muted-foreground">進行中</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-green-400">{challengeStats.completed}</p>
+                      <p className="text-xs text-muted-foreground">已完成</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
