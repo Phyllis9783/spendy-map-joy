@@ -37,11 +37,13 @@ interface UserChallenge {
 
 const MyChallenges = () => {
   const [challenges, setChallenges] = useState<UserChallenge[]>([]);
+  const [availableChallenges, setAvailableChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchUserChallenges();
+    fetchAvailableChallenges();
   }, []);
 
   const fetchUserChallenges = async () => {
@@ -77,6 +79,72 @@ const MyChallenges = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableChallenges = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('challenges')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAvailableChallenges(data || []);
+    } catch (error: any) {
+      console.error('Error fetching available challenges:', error);
+    }
+  };
+
+  const joinChallenge = async (challengeId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Check if already joined
+      const { data: existing } = await supabase
+        .from('user_challenges')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('challenge_id', challengeId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (existing) {
+        toast({
+          title: "已參加挑戰",
+          description: "你已經在進行這個挑戰了",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Join challenge
+      const { error } = await supabase
+        .from('user_challenges')
+        .insert({
+          user_id: user.id,
+          challenge_id: challengeId,
+          status: 'active',
+          current_amount: 0,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "✨ 挑戰已加入",
+        description: "開始你的挑戰之旅吧！",
+      });
+
+      fetchUserChallenges();
+    } catch (error: any) {
+      console.error('Error joining challenge:', error);
+      toast({
+        title: "加入失敗",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -258,68 +326,137 @@ const MyChallenges = () => {
       {/* Content */}
       <div className="p-6">
         {challenges.length === 0 ? (
-          <Card className="glass-card border-2 border-dashed border-primary/30">
-            <CardContent className="p-12 text-center">
-              <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <h3 className="text-xl font-semibold mb-2">還沒有參加任何挑戰</h3>
-              <p className="text-muted-foreground mb-6">
-                前往社群頁面，選擇你感興趣的挑戰開始吧！
-              </p>
-              <Button onClick={() => window.location.href = '/community'}>
+          <div className="space-y-6">
+            <Card className="glass-card border-2 border-dashed border-primary/30">
+              <CardContent className="p-12 text-center">
+                <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-xl font-semibold mb-2">還沒有參加任何挑戰</h3>
+                <p className="text-muted-foreground mb-6">
+                  從下方選擇你感興趣的挑戰開始吧！
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Available Challenges */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
                 探索挑戰
-              </Button>
-            </CardContent>
-          </Card>
+              </h2>
+              {availableChallenges.map((challenge) => (
+                <Card key={challenge.id} className="glass-card border-primary/20">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${getColorClass(challenge.color)} shadow-lg`}>
+                          {getIcon(challenge.icon)}
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                          <CardDescription className="mt-1">{challenge.description}</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={() => joinChallenge(challenge.id)}
+                      className="w-full"
+                    >
+                      加入挑戰
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         ) : (
-          <Tabs defaultValue="active" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="active">
-                進行中 ({activeChallenges.length})
-              </TabsTrigger>
-              <TabsTrigger value="completed">
-                已完成 ({completedChallenges.length})
-              </TabsTrigger>
-              <TabsTrigger value="failed">
-                已失敗 ({failedChallenges.length})
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-6">
+            <Tabs defaultValue="active" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="active">
+                  進行中 ({activeChallenges.length})
+                </TabsTrigger>
+                <TabsTrigger value="completed">
+                  已完成 ({completedChallenges.length})
+                </TabsTrigger>
+                <TabsTrigger value="failed">
+                  已失敗 ({failedChallenges.length})
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="active" className="space-y-4">
-              {activeChallenges.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    沒有進行中的挑戰
+              <TabsContent value="active" className="space-y-4">
+                {activeChallenges.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                      沒有進行中的挑戰
+                    </CardContent>
+                  </Card>
+                ) : (
+                  activeChallenges.map(renderChallengeCard)
+                )}
+              </TabsContent>
+
+              <TabsContent value="completed" className="space-y-4">
+                {completedChallenges.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                      還沒有完成的挑戰，繼續加油！
+                    </CardContent>
+                  </Card>
+                ) : (
+                  completedChallenges.map(renderChallengeCard)
+                )}
+              </TabsContent>
+
+              <TabsContent value="failed" className="space-y-4">
+                {failedChallenges.length === 0 ? (
+                  <Card className="glass-card">
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                      沒有失敗的挑戰
+                    </CardContent>
+                  </Card>
+                ) : (
+                  failedChallenges.map(renderChallengeCard)
+                )}
+              </TabsContent>
+            </Tabs>
+
+            {/* Available Challenges Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Target className="w-5 h-5 text-primary" />
+                探索更多挑戰
+              </h2>
+              {availableChallenges
+                .filter(ac => !challenges.some(uc => uc.challenge_id === ac.id && uc.status === 'active'))
+                .map((challenge) => (
+                <Card key={challenge.id} className="glass-card border-primary/20">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-xl bg-gradient-to-br ${getColorClass(challenge.color)} shadow-lg`}>
+                          {getIcon(challenge.icon)}
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                          <CardDescription className="mt-1">{challenge.description}</CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={() => joinChallenge(challenge.id)}
+                      className="w-full"
+                    >
+                      加入挑戰
+                    </Button>
                   </CardContent>
                 </Card>
-              ) : (
-                activeChallenges.map(renderChallengeCard)
-              )}
-            </TabsContent>
-
-            <TabsContent value="completed" className="space-y-4">
-              {completedChallenges.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    還沒有完成的挑戰，繼續加油！
-                  </CardContent>
-                </Card>
-              ) : (
-                completedChallenges.map(renderChallengeCard)
-              )}
-            </TabsContent>
-
-            <TabsContent value="failed" className="space-y-4">
-              {failedChallenges.length === 0 ? (
-                <Card className="glass-card">
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    沒有失敗的挑戰
-                  </CardContent>
-                </Card>
-              ) : (
-                failedChallenges.map(renderChallengeCard)
-              )}
-            </TabsContent>
-          </Tabs>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

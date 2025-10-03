@@ -73,6 +73,8 @@ export const trackSpendingChallenges = async (userId: string) => {
 
     for (const uc of userChallenges as UserChallenge[]) {
       const challenge = uc.challenges;
+      if (!challenge) continue; // Skip if challenge data is missing
+      
       const startDate = new Date(uc.started_at);
       const endDate = new Date(startDate.getTime() + challenge.duration_days * 24 * 60 * 60 * 1000);
 
@@ -142,6 +144,8 @@ export const trackLoggingChallenges = async (userId: string) => {
 
     for (const uc of userChallenges as UserChallenge[]) {
       const challenge = uc.challenges;
+      if (!challenge) continue; // Skip if challenge data is missing
+      
       const startDate = new Date(uc.started_at);
       const endDate = new Date(startDate.getTime() + challenge.duration_days * 24 * 60 * 60 * 1000);
 
@@ -219,6 +223,8 @@ export const trackExplorationChallenges = async (userId: string) => {
 
     for (const uc of userChallenges as UserChallenge[]) {
       const challenge = uc.challenges;
+      if (!challenge) continue; // Skip if challenge data is missing
+      
       const startDate = new Date(uc.started_at);
       const endDate = new Date(startDate.getTime() + challenge.duration_days * 24 * 60 * 60 * 1000);
 
