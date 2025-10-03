@@ -200,13 +200,16 @@ const Map = () => {
     },
   ];
 
-  // Prepare heatmap data
-  const heatmapData = expenses
-    .filter(e => e.location_lat && e.location_lng)
-    .map(e => ({
-      location: new google.maps.LatLng(e.location_lat!, e.location_lng!),
-      weight: e.amount / 1000,
-    }));
+  // Prepare heatmap data (will be generated inside LoadScript context)
+  const getHeatmapData = () => {
+    if (typeof google === 'undefined' || !google.maps) return [];
+    return expenses
+      .filter(e => e.location_lat && e.location_lng)
+      .map(e => ({
+        location: new google.maps.LatLng(e.location_lat!, e.location_lng!),
+        weight: e.amount / 1000,
+      }));
+  };
 
   const mapContainerStyle = {
     width: '100%',
@@ -225,6 +228,8 @@ const Map = () => {
 
   // Explore locations function
   const handleExploreLocations = () => {
+    console.log('探索地點按鈕被點擊', { expenses: expenses.length, isExploring });
+    
     if (expenses.length === 0) {
       toast({
         title: "尚無消費記錄",
@@ -234,9 +239,13 @@ const Map = () => {
       return;
     }
 
+    if (isExploring) return;
+
     setIsExploring(true);
     const nextIndex = (currentExploreIndex + 1) % expenses.length;
     const expense = expenses[nextIndex];
+    
+    console.log('探索地點', { nextIndex, expense });
     
     if (expense.location_lat && expense.location_lng) {
       setMapCenter({ lat: expense.location_lat, lng: expense.location_lng });
@@ -246,7 +255,7 @@ const Map = () => {
       
       toast({
         title: `📍 ${expense.location_name || "未知地點"}`,
-        description: `第 ${nextIndex + 1} / ${expenses.length} 個地點`,
+        description: `第 ${nextIndex + 1} / ${expenses.length} 個地點 - $${expense.amount.toLocaleString()}`,
       });
     }
 
@@ -296,10 +305,19 @@ const Map = () => {
 
       {/* Map */}
       <div className="p-6">
-        {expenses.length > 0 ? (
+        {!GOOGLE_MAPS_API_KEY ? (
+          <Card className="p-8 text-center">
+            <p className="text-destructive text-lg font-semibold mb-2">⚠️ 缺少 Google Maps API Key</p>
+            <p className="text-sm text-muted-foreground">
+              請在 .env 文件中設定 VITE_GOOGLE_MAPS_API_KEY
+            </p>
+          </Card>
+        ) : expenses.length > 0 ? (
           <LoadScript 
             googleMapsApiKey={GOOGLE_MAPS_API_KEY}
-            libraries={isHeatmapMode ? ["visualization"] : []}
+            libraries={["visualization"]}
+            onLoad={() => console.log('Google Maps API 載入成功')}
+            onError={(error) => console.error('Google Maps API 載入失敗:', error)}
           >
             <GoogleMap
               mapContainerStyle={mapContainerStyle}
@@ -315,9 +333,9 @@ const Map = () => {
               }}
             >
               {/* Heatmap Layer */}
-              {isHeatmapMode && heatmapData.length > 0 && (
+              {isHeatmapMode && getHeatmapData().length > 0 && (
                 <HeatmapLayer
-                  data={heatmapData}
+                  data={getHeatmapData()}
                   options={{
                     radius: 30,
                     opacity: 0.7,
