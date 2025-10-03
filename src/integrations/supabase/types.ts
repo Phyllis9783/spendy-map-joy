@@ -140,13 +140,6 @@ export type Database = {
             referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "location_access_logs_expense_id_fkey"
-            columns: ["expense_id"]
-            isOneToOne: false
-            referencedRelation: "expenses_low_precision"
-            referencedColumns: ["id"]
-          },
         ]
       }
       profiles: {
@@ -221,13 +214,6 @@ export type Database = {
             referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "shares_expense_id_fkey"
-            columns: ["expense_id"]
-            isOneToOne: false
-            referencedRelation: "expenses_low_precision"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_challenges: {
@@ -273,54 +259,7 @@ export type Database = {
       }
     }
     Views: {
-      expenses_low_precision: {
-        Row: {
-          amount: number | null
-          category: string | null
-          created_at: string | null
-          currency: string | null
-          description: string | null
-          expense_date: string | null
-          id: string | null
-          location_lat: number | null
-          location_lng: number | null
-          location_name: string | null
-          updated_at: string | null
-          user_id: string | null
-          voice_input: string | null
-        }
-        Insert: {
-          amount?: number | null
-          category?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          expense_date?: string | null
-          id?: string | null
-          location_lat?: never
-          location_lng?: never
-          location_name?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          voice_input?: string | null
-        }
-        Update: {
-          amount?: number | null
-          category?: string | null
-          created_at?: string | null
-          currency?: string | null
-          description?: string | null
-          expense_date?: string | null
-          id?: string | null
-          location_lat?: never
-          location_lng?: never
-          location_name?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          voice_input?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       check_suspicious_location_access: {
@@ -329,6 +268,24 @@ export type Database = {
           access_count: number
           last_access: string
           suspicious_activity: string
+        }[]
+      }
+      get_expenses_low_precision: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          amount: number
+          category: string
+          created_at: string
+          currency: string
+          description: string
+          expense_date: string
+          id: string
+          location_lat: number
+          location_lng: number
+          location_name: string
+          updated_at: string
+          user_id: string
+          voice_input: string
         }[]
       }
       log_location_access: {

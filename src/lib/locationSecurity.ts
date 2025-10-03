@@ -127,10 +127,7 @@ export async function getLowPrecisionExpenses() {
   if (!user) return [];
 
   const { data, error } = await supabase
-    .from('expenses_low_precision')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('expense_date', { ascending: false });
+    .rpc('get_expenses_low_precision');
 
   if (error) {
     console.error('Error fetching low precision expenses:', error);
