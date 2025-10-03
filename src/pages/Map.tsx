@@ -578,7 +578,7 @@ const Map = () => {
 
               {/* Animated markers */}
               <AnimatePresence>
-                {!isHeatmapMode && expenses.map((expense, index) => {
+                {!isHeatmapMode && typeof google !== 'undefined' && google.maps && expenses.map((expense, index) => {
                   if (!expense.location_lat || !expense.location_lng) return null;
                   
                   const isTopLocation = expense.location_name === stats.topLocation;
