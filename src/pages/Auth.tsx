@@ -6,10 +6,24 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+
+const signInSchema = z.object({
+  email: z.string().trim().email({ message: "請輸入有效的電子郵件地址" }).max(255, { message: "電子郵件地址過長" }),
+  password: z.string().min(6, { message: "密碼至少需要 6 個字元" }).max(100, { message: "密碼過長" })
+});
+
+const signUpSchema = z.object({
+  name: z.string().trim().min(1, { message: "姓名不能為空" }).max(100, { message: "姓名過長" }),
+  email: z.string().trim().email({ message: "請輸入有效的電子郵件地址" }).max(255, { message: "電子郵件地址過長" }),
+  password: z.string().min(6, { message: "密碼至少需要 6 個字元" }).max(100, { message: "密碼過長" })
+});
 
 const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   // Sign in state
@@ -23,9 +37,21 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = signInSchema.safeParse({ email: signInEmail, password: signInPassword });
+    if (!validation.success) {
+      toast({
+        title: "輸入錯誤",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
-    const { data, error } = await signIn(signInEmail, signInPassword);
+    const { data, error } = await signIn(validation.data.email, validation.data.password);
     
     setLoading(false);
 
@@ -36,9 +62,29 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const validation = signUpSchema.safeParse({ 
+      name: signUpName, 
+      email: signUpEmail, 
+      password: signUpPassword 
+    });
+    if (!validation.success) {
+      toast({
+        title: "輸入錯誤",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
-    const { data, error } = await signUp(signUpEmail, signUpPassword, signUpName);
+    const { data, error } = await signUp(
+      validation.data.email, 
+      validation.data.password, 
+      validation.data.name
+    );
     
     setLoading(false);
 

@@ -6,6 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import Confetti from "react-confetti";
+import { z } from "zod";
+
+const expenseInputSchema = z.object({
+  text: z.string()
+    .trim()
+    .min(1, { message: "請輸入消費記錄" })
+    .max(500, { message: "輸入內容過長，請限制在 500 字以內" })
+    .refine(
+      (text) => text.length > 5,
+      { message: "請輸入更詳細的消費記錄，例如：在星巴克花了150元買咖啡" }
+    )
+});
 
 interface VoiceInputProps {
   onExpenseCreated: () => void;
@@ -422,16 +434,18 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   };
 
   const handleManualSubmit = async () => {
-    if (!manualText.trim()) {
+    // Validate input
+    const validation = expenseInputSchema.safeParse({ text: manualText });
+    if (!validation.success) {
       toast({
-        title: "請輸入內容",
-        description: "請輸入消費記錄，例如：在星巴克花了150元買咖啡",
+        title: "輸入錯誤",
+        description: validation.error.errors[0].message,
         variant: "destructive",
       });
       return;
     }
     
-    await processExpense(manualText);
+    await processExpense(validation.data.text);
   };
 
   const handleClick = () => {
