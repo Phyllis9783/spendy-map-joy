@@ -50,10 +50,14 @@ const Profile = () => {
 
   const fetchStats = async () => {
     try {
-      // Get ALL expenses (no date filter)
+      // Get last 30 days expenses to match home page
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
       const { data, error } = await supabase
         .from('expenses')
-        .select('amount');
+        .select('amount')
+        .gte('expense_date', thirtyDaysAgo.toISOString());
 
       if (error) throw error;
 
