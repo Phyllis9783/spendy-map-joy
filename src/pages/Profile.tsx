@@ -1,6 +1,7 @@
-import { User, Settings, Database, TrendingUp, Award, LogOut } from "lucide-react";
+import { User, Settings, Database, TrendingUp, Award, LogOut, Shield } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ interface Profile {
 
 const Profile = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState({
     monthlyTotal: 0,
@@ -118,6 +120,15 @@ const Profile = () => {
 
       {/* Menu */}
       <div className="px-6 mt-8 space-y-2 animate-fade-in">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/security')}
+          className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]"
+        >
+          <Shield className="w-5 h-5 mr-3" />
+          <span>隱私與安全</span>
+        </Button>
+
         <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
           <Settings className="w-5 h-5 mr-3" />
           <span>設定</span>

@@ -104,6 +104,51 @@ export type Database = {
         }
         Relationships: []
       }
+      location_access_logs: {
+        Row: {
+          access_type: string
+          accessed_at: string
+          expense_id: string | null
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          accessed_at?: string
+          expense_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          accessed_at?: string
+          expense_id?: string | null
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_access_logs_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "location_access_logs_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses_low_precision"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -176,6 +221,13 @@ export type Database = {
             referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "shares_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses_low_precision"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_challenges: {
@@ -221,10 +273,72 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      expenses_low_precision: {
+        Row: {
+          amount: number | null
+          category: string | null
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          expense_date: string | null
+          id: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          updated_at: string | null
+          user_id: string | null
+          voice_input: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string | null
+          location_lat?: never
+          location_lng?: never
+          location_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          voice_input?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string | null
+          location_lat?: never
+          location_lng?: never
+          location_name?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          voice_input?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      check_suspicious_location_access: {
+        Args: { _user_id: string }
+        Returns: {
+          access_count: number
+          last_access: string
+          suspicious_activity: string
+        }[]
+      }
+      log_location_access: {
+        Args: { _access_type: string; _expense_id: string }
+        Returns: undefined
+      }
+      user_owns_expense: {
+        Args: { _expense_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
