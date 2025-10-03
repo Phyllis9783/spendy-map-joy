@@ -16,10 +16,31 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   const [interimText, setInterimText] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualText, setManualText] = useState("");
+  const [useRecording, setUseRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const { toast } = useToast();
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentLanguageIndex = useRef(0);
+
+  // Text preprocessing
+  const preprocessText = (text: string): string => {
+    let processed = text.trim();
+    
+    // Remove filler words
+    processed = processed.replace(/[嗯呃啊喔哦]/g, '');
+    
+    // Standardize currency units
+    processed = processed.replace(/塊錢/g, '元');
+    processed = processed.replace(/([0-9]+)塊/g, '$1元');
+    
+    // Standardize time expressions
+    processed = processed.replace(/今日|今仔日/g, '今天');
+    processed = processed.replace(/昨日|昨仔日/g, '昨天');
+    
+    return processed;
+  };
 
   const startRecording = async () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -55,8 +76,8 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     recognitionRef.current.lang = languages[currentLanguageIndex.current];
     
     recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = true; // Enable live subtitles
-    recognitionRef.current.maxAlternatives = 1;
+    recognitionRef.current.interimResults = true;
+    recognitionRef.current.maxAlternatives = 3; // Increased for better accuracy
     
     console.log('Starting speech recognition with language:', recognitionRef.current.lang);
 
@@ -92,8 +113,16 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
+        const confidence = event.results[i][0].confidence;
+        
         if (event.results[i].isFinal) {
           finalTranscript += transcript;
+          console.log('Confidence:', confidence);
+          
+          // Low confidence warning
+          if (confidence < 0.7) {
+            setInterimText(`${transcript} (置信度較低，請確認)`);
+          }
         } else {
           interimTranscript += transcript;
         }
@@ -108,12 +137,14 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       // Process final results
       if (finalTranscript) {
         console.log('Final recognized text:', finalTranscript);
-        setRecognizedText(finalTranscript);
+        const preprocessed = preprocessText(finalTranscript);
+        console.log('Preprocessed text:', preprocessed);
+        setRecognizedText(preprocessed);
         setInterimText("");
         setIsRecording(false);
         
         // Process the recognized text
-        await processExpense(finalTranscript);
+        await processExpense(preprocessed);
       }
     };
 
@@ -187,8 +218,9 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       // If we have interim text but no final result, process it
       if (interimText && !recognizedText && isRecording) {
         console.log('Processing interim text as final:', interimText);
-        setRecognizedText(interimText);
-        processExpense(interimText);
+        const preprocessed = preprocessText(interimText);
+        setRecognizedText(preprocessed);
+        processExpense(preprocessed);
       }
       
       setIsRecording(false);
@@ -196,6 +228,118 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     };
 
     recognitionRef.current.start();
+  };
+
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        await transcribeAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setAudioChunks(chunks);
+      setIsRecording(true);
+
+      // Auto-stop after 15 seconds
+      setTimeout(() => {
+        if (recorder.state === 'recording') {
+          recorder.stop();
+          setIsRecording(false);
+        }
+      }, 15000);
+
+      toast({
+        title: "錄音中",
+        description: "最長錄製 15 秒，請清楚說出消費記錄",
+      });
+    } catch (error) {
+      console.error('Recording error:', error);
+      toast({
+        title: "錄音失敗",
+        description: "無法存取麥克風，請改用文字輸入",
+        variant: "destructive",
+      });
+      setShowManualInput(true);
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      
+      const base64Audio = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data:audio/webm;base64, prefix
+          const base64 = result.split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+      });
+
+      // Call transcription edge function
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audio: base64Audio }
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to transcribe audio');
+      }
+
+      const text = data.text;
+      console.log('Transcribed text:', text);
+      const preprocessed = preprocessText(text);
+      setRecognizedText(preprocessed);
+
+      // Process the transcribed text
+      await processExpense(preprocessed);
+
+    } catch (error: any) {
+      console.error('Transcription error:', error);
+      
+      let errorMessage = "語音轉文字失敗，請重試或改用文字輸入";
+      
+      if (error.message?.includes('429')) {
+        errorMessage = "系統繁忙中，請稍後再試";
+      } else if (error.message?.includes('402')) {
+        errorMessage = "服務暫時無法使用，請稍後再試";
+      }
+      
+      toast({
+        title: "轉譯失敗",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setShowManualInput(true);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const stopRecording = () => {
@@ -226,8 +370,9 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       }
 
       const expense = data.expense;
+      console.log('Parsed expense:', expense);
 
-      // Save expense to database - ensure amount is a number
+      // Save expense to database
       const { error: insertError } = await supabase
         .from('expenses')
         .insert({
@@ -236,6 +381,8 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           category: expense.category,
           description: expense.description,
           location_name: expense.location_name,
+          location_lat: expense.location_lat,
+          location_lng: expense.location_lng,
           expense_date: expense.expense_date,
           voice_input: text,
         });
@@ -244,12 +391,13 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
       toast({
         title: "記帳成功！",
-        description: `已記錄 ${expense.amount} 元的 ${expense.category} 消費`,
+        description: `已記錄 ${expense.amount} 元的 ${expense.category} 消費${expense.location_name ? ` - ${expense.location_name}` : ''}`,
       });
 
       setRecognizedText("");
       setManualText("");
       setShowManualInput(false);
+      setUseRecording(false);
       onExpenseCreated();
 
     } catch (error: any) {
@@ -289,9 +437,18 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
 
   const handleClick = () => {
     if (isRecording) {
-      stopRecording();
+      if (useRecording) {
+        stopAudioRecording();
+      } else {
+        stopRecording();
+      }
     } else {
-      startRecording();
+      // Try speech recognition first, fallback to audio recording if fails
+      if (!useRecording) {
+        startRecording();
+      } else {
+        startAudioRecording();
+      }
     }
   };
 
@@ -347,16 +504,37 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       )}
 
       {!isRecording && !isProcessing && !recognizedText && (
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3">
           <p className="text-sm text-muted-foreground">
             點擊麥克風開始記帳
           </p>
-          <button
-            onClick={() => setShowManualInput(!showManualInput)}
-            className="text-xs text-primary hover:underline"
-          >
-            語音有問題？改用文字輸入
-          </button>
+          <div className="glass-card p-3 rounded-lg text-xs space-y-1">
+            <p className="font-medium text-primary">範例：</p>
+            <p className="text-muted-foreground">「今天在星巴克花了150元買咖啡」</p>
+            <p className="text-muted-foreground">「圍棋米粉100個¥10午餐」</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => setShowManualInput(!showManualInput)}
+              className="text-xs text-primary hover:underline"
+            >
+              改用文字輸入
+            </button>
+            {!useRecording && (
+              <button
+                onClick={() => {
+                  setUseRecording(true);
+                  toast({
+                    title: "切換到錄音模式",
+                    description: "將使用錄音轉文字功能",
+                  });
+                }}
+                className="text-xs text-primary hover:underline"
+              >
+                改用錄音轉文字
+              </button>
+            )}
+          </div>
         </div>
       )}
 

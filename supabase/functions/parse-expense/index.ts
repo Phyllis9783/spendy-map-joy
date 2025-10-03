@@ -37,26 +37,67 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `你是一個智能記帳助手。解析用戶的自然語言輸入，提取消費資訊。
+            content: `你是一個專業的中文記帳 AI 助手，擅長解析口語化的消費記錄。
 
-請以 JSON 格式回應，包含以下欄位：
-- amount: 金額（數字）
-- category: 分類（food/transport/entertainment/shopping/daily）
-- description: 描述
-- location_name: 地點名稱（如果有提到）
-- expense_date: 日期（ISO格式，如果沒提到就用當前時間）
+【解析規則】
+1. 金額提取：
+   - 支援："150元"、"150塊"、"150"、"一百五"、"一百五十塊錢"、"¥150"
+   - 如果有多個數字，選擇最合理的金額（例如："150個10元" → amount: 10）
+   
+2. 分類判斷（category）：
+   - food: 餐飲、飲料、零食、咖啡、早餐、午餐、晚餐、宵夜、米粉、珍奶、奶茶
+   - transport: 交通、計程車、Uber、公車、捷運、高鐵、加油
+   - entertainment: 娛樂、電影、遊戲、KTV、旅遊
+   - shopping: 購物、衣服、3C、家電、書籍
+   - daily: 日常用品、生活用品、菜市場、超市、藥妝、買菜
+   - 如果無法確定，優先選擇 daily
 
-範例：
-輸入："今天在星巴克花了150元買咖啡"
-輸出：{
-  "amount": 150,
-  "category": "food",
-  "description": "咖啡",
-  "location_name": "星巴克",
-  "expense_date": "2024-01-01T10:00:00Z"
+3. 時間解析（expense_date）：
+   - "今天"、"今日" → 當天日期
+   - "昨天"、"昨日" → 前一天
+   - "中午"、"午餐" → 12:00
+   - "晚上"、"晚餐" → 19:00
+   - "早上"、"早餐" → 08:00
+   - 如果沒提到，使用當前時間
+
+4. 地點提取（location_name）：
+   - 品牌名稱：星巴克、麥當勞、全家、7-11
+   - 地點描述：公司樓下、家附近、士林夜市
+   - 如果沒提到，設為 null
+
+【回應格式】
+嚴格遵守以下 JSON 格式，不要添加任何解釋文字：
+{
+  "amount": <數字>,
+  "category": "<分類>",
+  "description": "<簡潔描述，10字內>",
+  "location_name": "<地點或null>",
+  "expense_date": "<ISO 8601格式>"
 }
 
-如果無法解析某些資訊，請在回應中標記為 null。`
+【範例】
+輸入："今天中午在星巴克花了150元買咖啡"
+輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-03T12:00:00Z"}
+
+輸入："昨天晚上計程車回家80塊"
+輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "2024-10-02T19:00:00Z"}
+
+輸入："圍棋米粉100個¥10午餐"
+輸出：{"amount": 10, "category": "food", "description": "圍棋米粉", "location_name": null, "expense_date": "2024-10-03T12:00:00Z"}
+
+輸入："公司樓下買了一杯珍奶五十五"
+輸出：{"amount": 55, "category": "food", "description": "珍珠奶茶", "location_name": "公司樓下", "expense_date": "2024-10-03T14:00:00Z"}
+
+輸入："看電影兩百"
+輸出：{"amount": 200, "category": "entertainment", "description": "電影", "location_name": null, "expense_date": "2024-10-03T20:00:00Z"}
+
+輸入："昨天晚上在星巴克花了一百五買咖啡"
+輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-02T19:00:00Z"}
+
+輸入："買菜花了三百塊在菜市場"
+輸出：{"amount": 300, "category": "daily", "description": "買菜", "location_name": "菜市場", "expense_date": "2024-10-03T10:00:00Z"}
+
+請只回應 JSON，不要有其他內容。`
           },
           {
             role: 'user',
@@ -125,6 +166,32 @@ serve(async (req) => {
       throw new Error('Missing required fields: amount or category');
     }
 
+    // Geocoding: if location_name exists, get coordinates
+    let location_lat = null;
+    let location_lng = null;
+    
+    if (parsedExpense.location_name) {
+      try {
+        const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
+        if (GOOGLE_MAPS_API_KEY) {
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsedExpense.location_name)}&key=${GOOGLE_MAPS_API_KEY}`;
+          const geocodeResponse = await fetch(geocodeUrl);
+          const geocodeData = await geocodeResponse.json();
+          
+          if (geocodeData.status === 'OK' && geocodeData.results.length > 0) {
+            location_lat = geocodeData.results[0].geometry.location.lat;
+            location_lng = geocodeData.results[0].geometry.location.lng;
+            console.log(`Geocoded "${parsedExpense.location_name}" to: ${location_lat}, ${location_lng}`);
+          } else {
+            console.log(`Geocoding failed for "${parsedExpense.location_name}": ${geocodeData.status}`);
+          }
+        }
+      } catch (geocodeError) {
+        console.error('Geocoding error:', geocodeError);
+        // Continue without coordinates
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -134,6 +201,8 @@ serve(async (req) => {
           description: parsedExpense.description || '',
           location_name: parsedExpense.location_name || null,
           expense_date: parsedExpense.expense_date || new Date().toISOString(),
+          location_lat,
+          location_lng,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

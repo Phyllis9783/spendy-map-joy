@@ -1,10 +1,24 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, MapPin, Users, Clock } from "lucide-react";
+import { TrendingUp, MapPin, Users, Clock, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import VoiceInput from "@/components/VoiceInput";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface Expense {
   id: string;
@@ -13,6 +27,8 @@ interface Expense {
   description: string;
   location_name: string | null;
   expense_date: string;
+  location_lat: number | null;
+  location_lng: number | null;
 }
 
 const Home = () => {
@@ -23,6 +39,9 @@ const Home = () => {
     shareCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const fetchExpenses = async () => {
     try {
@@ -49,8 +68,43 @@ const Home = () => {
       }
     } catch (error) {
       console.error('Error fetching expenses:', error);
+      toast({
+        title: "載入失敗",
+        description: "無法載入消費記錄",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (expenseId: string) => {
+    setDeletingId(expenseId);
+
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+
+      if (error) throw error;
+
+      toast({
+        title: "刪除成功",
+        description: "消費記錄已刪除",
+      });
+
+      // Refresh the list
+      fetchExpenses();
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast({
+        title: "刪除失敗",
+        description: "無法刪除消費記錄，請重試",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -149,7 +203,7 @@ const Home = () => {
                 className="p-4 glass-card shadow-sm interactive-lift"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
                     <span className="text-2xl">
                       {getCategoryEmoji(expense.category)}
@@ -161,8 +215,17 @@ const Home = () => {
                       <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                         {expense.location_name && (
                           <>
-                            <MapPin className="w-3 h-3" />
-                            <span>{expense.location_name}</span>
+                            <button
+                              onClick={() => {
+                                if (expense.location_lat && expense.location_lng) {
+                                  navigate('/map', { state: { focusExpense: expense } });
+                                }
+                              }}
+                              className="flex items-center gap-1 hover:text-primary transition-colors"
+                            >
+                              <MapPin className="w-3 h-3" />
+                              <span>{expense.location_name}</span>
+                            </button>
                           </>
                         )}
                         <Clock className="w-3 h-3 ml-2" />
@@ -172,11 +235,42 @@ const Home = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-destructive">
-                      ${expense.amount}
-                    </p>
-                    <p className="text-xs text-muted-foreground">TWD</p>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-destructive">
+                        ${expense.amount}
+                      </p>
+                      <p className="text-xs text-muted-foreground">TWD</p>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          disabled={deletingId === expense.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>確認刪除</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            確定要刪除這筆消費記錄嗎？此操作無法復原。
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(expense.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            刪除
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </Card>
