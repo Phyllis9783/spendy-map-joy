@@ -60,6 +60,43 @@ const Home = () => {
       
       if (!user) throw new Error('Not authenticated');
 
+      // One-time fix: Correct recent expenses with wrong year
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+      
+      const { data: recentWithWrongYear, error: fetchError } = await supabase
+        .from('expenses')
+        .select('*')
+        .gte('created_at', oneDayAgo.toISOString())
+        .lt('expense_date', sixMonthsAgo.toISOString());
+
+      if (!fetchError && recentWithWrongYear && recentWithWrongYear.length > 0) {
+        console.log(`Found ${recentWithWrongYear.length} recent expenses with wrong year, correcting...`);
+        
+        const currentYear = new Date().getFullYear();
+        for (const exp of recentWithWrongYear) {
+          const expDate = new Date(exp.expense_date);
+          const correctedDate = new Date(expDate);
+          correctedDate.setFullYear(currentYear);
+          
+          const { error: updateError } = await supabase
+            .from('expenses')
+            .update({ expense_date: correctedDate.toISOString() })
+            .eq('id', exp.id);
+            
+          if (!updateError) {
+            console.log(`✅ Corrected expense ${exp.id}: ${exp.expense_date} → ${correctedDate.toISOString()}`);
+          }
+        }
+        
+        toast({
+          title: "已修正日期",
+          description: `已自動修正 ${recentWithWrongYear.length} 筆記錄的年份`,
+        });
+      }
+
       // Calculate 30 days ago date
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

@@ -25,6 +25,17 @@ serve(async (req) => {
 
     console.log('Parsing expense from text:', text);
 
+    // Get current date/time in Taipei timezone
+    const now = new Date();
+    const taipeiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+    const today = taipeiTime.toISOString().split('T')[0];
+    const yesterday = new Date(taipeiTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const currentYear = taipeiTime.getFullYear();
+
+    console.log(`Current date (Taipei): ${today}, Current year: ${currentYear}`);
+
     // Call Lovable AI to parse the expense
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -38,6 +49,10 @@ serve(async (req) => {
           {
             role: 'system',
             content: `你是一個專業的中文記帳 AI 助手，擅長解析口語化的消費記錄。
+
+【當前資訊】
+- 今天日期（台北時區）：${today}
+- 當前年份：${currentYear}
 
 【解析規則】
 1. 金額提取：
@@ -53,14 +68,16 @@ serve(async (req) => {
    - 如果無法確定，優先選擇 daily
 
 3. 時間解析（expense_date）：
-   - **重要：使用台北時區 (UTC+8)，格式必須是 "2024-10-03T12:00:00+08:00"**
-   - "今天"、"今日" → 當天日期（台北時區）
-   - "昨天"、"昨日" → 前一天（台北時區）
+   - **重要：使用台北時區 (UTC+8)，格式必須是 "${today}T12:00:00+08:00"**
+   - **如果用戶沒有明確提到年份（如：2024年、去年等），一律使用當前年份 ${currentYear}**
+   - "今天"、"今日" → ${today}（台北時區）
+   - "昨天"、"昨日" → ${yesterdayStr}（台北時區）
    - "中午"、"午餐" → 12:00（台北時區）
    - "晚上"、"晚餐" → 19:00（台北時區）
    - "早上"、"早餐" → 08:00（台北時區）
    - 如果沒提到時間，使用當前時間（台北時區）
    - **絕對不要使用 UTC 時間（不要用 Z 後綴）**
+   - **所有日期必須包含 +08:00 時區標記**
 
 4. 地點提取（location_name）：
    - 品牌名稱：星巴克、麥當勞、全家、7-11
@@ -74,30 +91,30 @@ serve(async (req) => {
   "category": "<分類>",
   "description": "<簡潔描述，10字內>",
   "location_name": "<地點或null>",
-  "expense_date": "<ISO 8601格式>"
+  "expense_date": "<ISO 8601格式，必須含+08:00>"
 }
 
-【範例】（所有時間都使用台北時區 +08:00）
+【範例】（使用當前日期和時區）
 輸入："今天中午在星巴克花了150元買咖啡"
-輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-03T12:00:00+08:00"}
+輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "${today}T12:00:00+08:00"}
 
 輸入："昨天晚上計程車回家80塊"
-輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "2024-10-02T19:00:00+08:00"}
+輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "${yesterdayStr}T19:00:00+08:00"}
 
 輸入："圍棋米粉100個¥10午餐"
-輸出：{"amount": 10, "category": "food", "description": "圍棋米粉", "location_name": null, "expense_date": "2024-10-03T12:00:00+08:00"}
+輸出：{"amount": 10, "category": "food", "description": "圍棋米粉", "location_name": null, "expense_date": "${today}T12:00:00+08:00"}
 
 輸入："公司樓下買了一杯珍奶五十五"
-輸出：{"amount": 55, "category": "food", "description": "珍珠奶茶", "location_name": "公司樓下", "expense_date": "2024-10-03T14:00:00+08:00"}
+輸出：{"amount": 55, "category": "food", "description": "珍珠奶茶", "location_name": "公司樓下", "expense_date": "${today}T14:00:00+08:00"}
 
 輸入："看電影兩百"
-輸出：{"amount": 200, "category": "entertainment", "description": "電影", "location_name": null, "expense_date": "2024-10-03T20:00:00+08:00"}
+輸出：{"amount": 200, "category": "entertainment", "description": "電影", "location_name": null, "expense_date": "${today}T20:00:00+08:00"}
 
-輸入："昨天晚上在星巴克花了一百五買咖啡"
-輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "2024-10-02T19:00:00+08:00"}
+輸入："晚餐299"
+輸出：{"amount": 299, "category": "food", "description": "晚餐", "location_name": null, "expense_date": "${today}T19:00:00+08:00"}
 
 輸入："買菜花了三百塊在菜市場"
-輸出：{"amount": 300, "category": "daily", "description": "買菜", "location_name": "菜市場", "expense_date": "2024-10-03T10:00:00+08:00"}
+輸出：{"amount": 300, "category": "daily", "description": "買菜", "location_name": "菜市場", "expense_date": "${today}T10:00:00+08:00"}
 
 請只回應 JSON，不要有其他內容。`
           },
@@ -166,6 +183,26 @@ serve(async (req) => {
     // Validate required fields
     if (!parsedExpense.amount || !parsedExpense.category) {
       throw new Error('Missing required fields: amount or category');
+    }
+
+    // Safeguard: Check if year needs correction
+    // If input doesn't contain explicit year mention and parsed year isn't current year, correct it
+    const hasYearMention = /20\d{2}年|去年|前年/.test(text);
+    if (!hasYearMention && parsedExpense.expense_date) {
+      const parsedDate = new Date(parsedExpense.expense_date);
+      const parsedYear = parsedDate.getFullYear();
+      const now = new Date();
+      const taipeiTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' }));
+      const currentYear = taipeiTime.getFullYear();
+      
+      if (parsedYear !== currentYear) {
+        // Correct the year while preserving month, day, and time
+        const correctedDate = new Date(parsedDate);
+        correctedDate.setFullYear(currentYear);
+        const originalDateStr = parsedExpense.expense_date;
+        parsedExpense.expense_date = correctedDate.toISOString().replace('Z', '+08:00');
+        console.log(`⚠️ Year correction applied: ${originalDateStr} → ${parsedExpense.expense_date}`);
+      }
     }
 
     // Geocoding: if location_name exists, get coordinates

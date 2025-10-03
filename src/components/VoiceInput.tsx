@@ -367,8 +367,22 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         throw new Error(data.error || 'Failed to parse expense');
       }
 
-      const expense = data.expense;
+      let expense = data.expense;
       console.log('Parsed expense:', expense);
+
+      // Client-side safeguard: Check if year needs correction
+      const hasYearMention = /20\d{2}年|去年|前年/.test(text);
+      if (!hasYearMention && expense.expense_date) {
+        const parsedDate = new Date(expense.expense_date);
+        const currentYear = new Date().getFullYear();
+        
+        if (parsedDate.getFullYear() !== currentYear) {
+          const correctedDate = new Date(parsedDate);
+          correctedDate.setFullYear(currentYear);
+          expense.expense_date = correctedDate.toISOString();
+          console.log('⚠️ Client-side year correction applied');
+        }
+      }
 
       const { error: insertError } = await supabase
         .from('expenses')
@@ -401,9 +415,20 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         navigator.vibrate([100, 50, 100]);
       }
 
+      // Format the date for display
+      const expenseDate = new Date(expense.expense_date);
+      const dateStr = expenseDate.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Taipei'
+      });
+
       toast({
         title: "🎉 記帳成功！",
-        description: `已記錄 ${expense.amount} 元的 ${expense.category} 消費${expense.location_name ? ` - ${expense.location_name}` : ''}`,
+        description: `已記錄 ${expense.amount} 元的 ${expense.category} 消費${expense.location_name ? ` - ${expense.location_name}` : ''}\n記錄日期：${dateStr}`,
       });
 
       setRecognizedText("");
