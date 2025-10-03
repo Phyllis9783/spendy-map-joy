@@ -31,12 +31,15 @@ const Map = () => {
   const [isHeatmapMode, setIsHeatmapMode] = useState(false);
   const [currentExploreIndex, setCurrentExploreIndex] = useState(0);
   const [isExploring, setIsExploring] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [missingCoordinatesCount, setMissingCoordinatesCount] = useState(0);
   const [stats, setStats] = useState({
     topLocation: "--",
     rangeKm: 0,
   });
   const location = useLocation();
   const focusExpense = location.state?.focusExpense;
+  const autoExplore = location.state?.autoExplore;
   const { toast } = useToast();
 
   const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -55,6 +58,16 @@ const Map = () => {
     }
   }, [focusExpense]);
 
+  // Auto-explore when navigated from home
+  useEffect(() => {
+    if (autoExplore && expenses.length > 0 && !isExploring) {
+      const timer = setTimeout(() => {
+        handleExploreLocations();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [autoExplore, expenses]);
+
   const fetchExpenses = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -72,6 +85,16 @@ const Map = () => {
       if (error) throw error;
 
       setExpenses(data || []);
+
+      // Check for expenses with location_name but no coordinates
+      const { data: missingData } = await supabase
+        .from('expenses')
+        .select('id')
+        .eq('user_id', user.id)
+        .not('location_name', 'is', null)
+        .is('location_lat', null);
+      
+      setMissingCoordinatesCount(missingData?.length || 0);
 
       if (data && data.length > 0) {
         // Most frequent location
@@ -232,9 +255,8 @@ const Map = () => {
     
     if (expenses.length === 0) {
       toast({
-        title: "尚無消費記錄",
+        title: "尚無可探索座標",
         description: "開始記帳後即可探索地點",
-        variant: "destructive",
       });
       return;
     }
@@ -260,6 +282,99 @@ const Map = () => {
     }
 
     setTimeout(() => setIsExploring(false), 1000);
+  };
+
+  // Geocode missing locations
+  const geocodeMissingExpenses = async () => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      toast({
+        title: "缺少 API Key",
+        description: "請設定 Google Maps API Key",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeocoding(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get expenses with location_name but no coordinates
+      const { data: missingExpenses, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user.id)
+        .not('location_name', 'is', null)
+        .is('location_lat', null);
+
+      if (error) throw error;
+      if (!missingExpenses || missingExpenses.length === 0) {
+        toast({
+          title: "✅ 無需補齊",
+          description: "所有地點都已有座標",
+        });
+        setIsGeocoding(false);
+        return;
+      }
+
+      toast({
+        title: "🔄 開始補齊座標",
+        description: `正在處理 ${missingExpenses.length} 筆記錄...`,
+      });
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const expense of missingExpenses) {
+        try {
+          const response = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(expense.location_name)}&key=${GOOGLE_MAPS_API_KEY}`
+          );
+          const data = await response.json();
+
+          if (data.status === 'OK' && data.results[0]) {
+            const { lat, lng } = data.results[0].geometry.location;
+            
+            await supabase
+              .from('expenses')
+              .update({
+                location_lat: lat,
+                location_lng: lng,
+              })
+              .eq('id', expense.id);
+
+            successCount++;
+          } else {
+            failCount++;
+          }
+
+          // Add delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (err) {
+          console.error('Geocoding error for expense:', expense.id, err);
+          failCount++;
+        }
+      }
+
+      toast({
+        title: "✅ 座標補齊完成",
+        description: `成功: ${successCount} 筆 | 失敗: ${failCount} 筆`,
+      });
+
+      // Refresh expenses
+      fetchExpenses();
+    } catch (error) {
+      console.error('Error geocoding expenses:', error);
+      toast({
+        title: "補齊失敗",
+        description: "無法補齊座標，請重試",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   return (
@@ -294,7 +409,7 @@ const Map = () => {
             size="sm"
             variant="outline"
             onClick={handleExploreLocations}
-            disabled={isExploring || expenses.length === 0}
+            disabled={isExploring}
             className="gap-2"
           >
             <Navigation className="w-4 h-4" />
@@ -453,6 +568,25 @@ const Map = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Geocode Missing Locations Button */}
+        {missingCoordinatesCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-4"
+          >
+            <Button
+              onClick={geocodeMissingExpenses}
+              disabled={isGeocoding}
+              className="w-full gap-2"
+              variant="secondary"
+            >
+              <MapPin className="w-4 h-4" />
+              {isGeocoding ? "處理中..." : `一鍵補齊地點座標 (${missingCoordinatesCount} 筆)`}
+            </Button>
+          </motion.div>
         )}
 
         {/* Stats Cards */}

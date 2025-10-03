@@ -231,7 +231,10 @@ const Home = () => {
         </motion.div>
 
         <motion.div whileHover={{ scale: 1.05, y: -5 }} transition={{ type: "spring", stiffness: 300 }}>
-          <Card className="glass-card border-secondary/20 shadow-lg">
+          <Card 
+            className="glass-card border-secondary/20 shadow-lg cursor-pointer hover:border-secondary/40 transition-colors"
+            onClick={() => navigate("/map", { state: { autoExplore: true } })}
+          >
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
                 <motion.div
