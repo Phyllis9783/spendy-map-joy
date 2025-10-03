@@ -7,11 +7,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkSuspiciousActivity } from "@/lib/locationSecurity";
+import ConsumptionDashboard from "@/components/ConsumptionDashboard";
 
 interface Profile {
   full_name: string | null;
   email: string | null;
   monthly_budget: number;
+}
+
+interface Expense {
+  amount: number;
+  category: string;
+  expense_date: string;
 }
 
 const Profile = () => {
@@ -23,6 +30,8 @@ const Profile = () => {
     badges: 0,
   });
   const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning'>('safe');
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -56,11 +65,12 @@ const Profile = () => {
       
       const { data, error } = await supabase
         .from('expenses')
-        .select('amount')
+        .select('amount, category, expense_date')
         .gte('expense_date', thirtyDaysAgo.toISOString());
 
       if (error) throw error;
 
+      setExpenses(data || []);
       const total = data?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
 
       // Get completed challenges count
@@ -109,7 +119,10 @@ const Profile = () => {
 
       {/* Stats Cards */}
       <div className="px-6 space-y-4 animate-slide-up">
-        <Card className="p-6 glass-card shadow-md interactive-lift">
+        <Card 
+          className="p-6 glass-card shadow-md interactive-lift cursor-pointer hover:shadow-xl transition-all"
+          onClick={() => setDashboardOpen(true)}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">總消費</p>
@@ -177,6 +190,13 @@ const Profile = () => {
         <p>Spendy Map v1.0</p>
         <p className="mt-1">讓記帳變得有趣</p>
       </div>
+
+      {/* Consumption Dashboard */}
+      <ConsumptionDashboard 
+        open={dashboardOpen}
+        onOpenChange={setDashboardOpen}
+        expenses={expenses}
+      />
     </div>
   );
 };

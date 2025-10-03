@@ -6,6 +6,7 @@ import VoiceInput from "@/components/VoiceInput";
 import EditExpenseDialog from "@/components/EditExpenseDialog";
 import CreateShareDialog from "@/components/CreateShareDialog";
 import ExpenseStatsDialog from "@/components/ExpenseStatsDialog";
+import ExpenseDetailDialog from "@/components/ExpenseDetailDialog";
 import { logLocationAccess } from "@/lib/locationSecurity";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -43,6 +44,8 @@ const Home = () => {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [selectedExpenseForShare, setSelectedExpenseForShare] = useState<Expense | null>(null);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
   const {
     toast
   } = useToast();
@@ -425,7 +428,13 @@ const Home = () => {
         scale: 1.02,
         y: -2
       }}>
-              <Card className={`glass-card hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden ${expense.category === 'food' ? 'border-l-[hsl(var(--category-food))]' : expense.category === 'transport' ? 'border-l-[hsl(var(--category-transport))]' : expense.category === 'entertainment' ? 'border-l-[hsl(var(--category-entertainment))]' : expense.category === 'shopping' ? 'border-l-[hsl(var(--category-shopping))]' : 'border-l-[hsl(var(--category-daily))]'}`}>
+              <Card 
+                className={`glass-card hover:shadow-xl transition-all duration-300 border-l-4 relative overflow-hidden cursor-pointer ${expense.category === 'food' ? 'border-l-[hsl(var(--category-food))]' : expense.category === 'transport' ? 'border-l-[hsl(var(--category-transport))]' : expense.category === 'entertainment' ? 'border-l-[hsl(var(--category-entertainment))]' : expense.category === 'shopping' ? 'border-l-[hsl(var(--category-shopping))]' : 'border-l-[hsl(var(--category-daily))]'}`}
+                onClick={() => {
+                  setSelectedExpenseForDetail(expense);
+                  setDetailDialogOpen(true);
+                }}
+              >
                 {/* Decorative background gradient */}
                 <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 ${getCategoryGradient(expense.category)}`} style={{
             borderRadius: '0 0 0 100%'
@@ -546,6 +555,13 @@ const Home = () => {
         onOpenChange={setShareDialogOpen}
         expense={selectedExpenseForShare}
         onSuccess={fetchExpenses}
+      />
+
+      {/* Expense Detail Dialog */}
+      <ExpenseDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        expense={selectedExpenseForDetail}
       />
     </div>;
 };
