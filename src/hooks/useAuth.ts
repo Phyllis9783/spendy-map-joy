@@ -178,9 +178,23 @@ export const useAuth = () => {
       return { data, error: null };
     } catch (error: any) {
       console.error('Google sign in error:', error);
+      
+      // Enhanced error messages for common Google OAuth issues
+      let errorMessage = error.message;
+      
+      if (error.status === 403 || 
+          error.message?.toLowerCase().includes('disallowed_useragent') ||
+          error.message?.toLowerCase().includes('user agent')) {
+        errorMessage = "您的瀏覽器環境不支援 Google 登入。請點擊右上角「在瀏覽器中開啟」，或改用 Email 登入";
+      } else if (error.message?.toLowerCase().includes('popup')) {
+        errorMessage = "彈出視窗被封鎖，請允許彈出視窗或改用 Email 登入";
+      } else if (error.message?.toLowerCase().includes('redirect')) {
+        errorMessage = "登入重新導向失敗，請稍後再試或改用 Email 登入";
+      }
+      
       toast({
         title: "Google 登入失敗",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       return { data: null, error };

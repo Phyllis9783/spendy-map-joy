@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { isInAppBrowser, isMobileDevice, getOpenInBrowserHint } from "@/lib/browserDetection";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: "請輸入有效的電子郵件地址" }).max(255, { message: "電子郵件地址過長" }),
@@ -30,6 +32,11 @@ const Auth = () => {
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showGoogleHint, setShowGoogleHint] = useState(false);
+
+  useEffect(() => {
+    setShowGoogleHint(isInAppBrowser());
+  }, []);
 
   // If already logged in, leave /auth immediately
   useEffect(() => {
@@ -193,6 +200,15 @@ const Auth = () => {
                   </div>
                 </div>
 
+                {showGoogleHint && (
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {getOpenInBrowserHint()}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Button
                   type="button"
                   variant="outline"
@@ -299,6 +315,15 @@ const Auth = () => {
                     <span className="bg-background px-2 text-muted-foreground">或</span>
                   </div>
                 </div>
+
+                {showGoogleHint && (
+                  <Alert className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {getOpenInBrowserHint()}
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <Button
                   type="button"
