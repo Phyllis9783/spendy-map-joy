@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -57,13 +57,8 @@ const Auth = () => {
     }
   };
 
-  // If already logged in, leave /auth immediately
-  useEffect(() => {
-    if (user) {
-      const startPage = localStorage.getItem('startPage') || '/';
-      navigate(startPage, { replace: true });
-    }
-  }, [user, navigate]);
+  // Redirect handled via <Navigate /> below to avoid cross-frame issues
+  useEffect(() => {}, []);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
 
@@ -154,6 +149,12 @@ const Auth = () => {
       navigate(startPage, { replace: true });
     }
   };
+
+  // Declarative redirect when authenticated
+  if (user) {
+    const startPage = localStorage.getItem('startPage') || '/';
+    return <Navigate to={startPage} replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero bg-mesh p-6">
