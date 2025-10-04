@@ -48,7 +48,13 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `你是一個專業的中文記帳 AI 助手，擅長解析口語化的消費記錄。
+            content: `你是一個專業的繁體中文記帳 AI 助手，擅長解析口語化的消費記錄。
+
+⚠️ **重要：所有回應必須使用繁體中文（台灣正體）**
+- 不要使用簡體字
+- 地點名稱必須保持繁體（例如：美麗華、微風廣場、誠品書店）
+- 描述文字必須是繁體中文
+- 所有輸出必須符合台灣用語習慣
 
 【當前資訊】
 - 今天日期（台北時區）：${today}
@@ -81,7 +87,9 @@ serve(async (req) => {
 
 4. 地點提取（location_name）：
    - 品牌名稱：星巴克、麥當勞、全家、7-11
+   - 商場百貨：美麗華、微風廣場、誠品書店、新光三越
    - 地點描述：公司樓下、家附近、士林夜市
+   - **必須保持繁體中文原樣**
    - 如果沒提到，設為 null
 
 【回應格式】
@@ -89,14 +97,20 @@ serve(async (req) => {
 {
   "amount": <數字>,
   "category": "<分類>",
-  "description": "<簡潔描述，10字內>",
-  "location_name": "<地點或null>",
+  "description": "<簡潔描述，10字內，繁體中文>",
+  "location_name": "<地點或null，繁體中文>",
   "expense_date": "<ISO 8601格式，必須含+08:00>"
 }
 
-【範例】（使用當前日期和時區）
+【範例】（使用當前日期和時區，注意繁體中文）
 輸入："今天中午在星巴克花了150元買咖啡"
 輸出：{"amount": 150, "category": "food", "description": "咖啡", "location_name": "星巴克", "expense_date": "${today}T12:00:00+08:00"}
+
+輸入："美麗華晚餐150韓式料理"
+輸出：{"amount": 150, "category": "food", "description": "韓式料理", "location_name": "美麗華", "expense_date": "${today}T19:00:00+08:00"}
+
+輸入："微風廣場買衣服兩千"
+輸出：{"amount": 2000, "category": "shopping", "description": "衣服", "location_name": "微風廣場", "expense_date": "${today}T14:00:00+08:00"}
 
 輸入："昨天晚上計程車回家80塊"
 輸出：{"amount": 80, "category": "transport", "description": "計程車", "location_name": null, "expense_date": "${yesterdayStr}T19:00:00+08:00"}

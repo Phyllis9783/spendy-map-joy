@@ -63,7 +63,7 @@ serve(async (req) => {
     const blob = new Blob([binaryAudio], { type: 'audio/webm' });
     formData.append('file', blob, 'audio.webm');
     formData.append('model', 'whisper-1');
-    formData.append('language', 'zh');
+    formData.append('language', 'zh-TW');
 
     // Send to OpenAI
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
