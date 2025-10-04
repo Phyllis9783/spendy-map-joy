@@ -9,8 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { checkSuspiciousActivity } from "@/lib/locationSecurity";
 import ConsumptionDashboard from "@/components/ConsumptionDashboard";
 import CurrencySettingsDialog from "@/components/CurrencySettingsDialog";
+import SettingsDialog from "@/components/SettingsDialog";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { formatCurrency } from "@/lib/currency";
+import { toast } from "sonner";
 
 interface Profile {
   full_name: string | null;
@@ -35,6 +37,7 @@ const Profile = () => {
   const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning'>('safe');
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const { currency } = useCurrency();
 
@@ -100,6 +103,51 @@ const Profile = () => {
       setSecurityStatus(suspicious.length > 0 ? 'warning' : 'safe');
     } catch (error) {
       console.error('Error checking security:', error);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('expense_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Convert to CSV
+      const headers = ['日期', '類別', '金額', '描述', '地點', '幣別'];
+      const csvRows = [headers.join(',')];
+      
+      data?.forEach(expense => {
+        const row = [
+          new Date(expense.expense_date).toLocaleDateString('zh-TW'),
+          expense.category,
+          expense.amount,
+          expense.description || '',
+          expense.location_name || '',
+          expense.currency || 'TWD'
+        ];
+        csvRows.push(row.map(cell => `"${cell}"`).join(','));
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', `消費記錄_${new Date().toLocaleDateString('zh-TW')}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success('資料已成功匯出');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('匯出失敗，請稍後再試');
     }
   };
 
@@ -179,12 +227,20 @@ const Profile = () => {
           <span>幣值設定</span>
         </Button>
 
-        <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
+        <Button 
+          variant="ghost" 
+          onClick={() => setSettingsDialogOpen(true)}
+          className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]"
+        >
           <Settings className="w-5 h-5 mr-3" />
           <span>設定</span>
         </Button>
 
-        <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
+        <Button 
+          variant="ghost" 
+          onClick={handleExportData}
+          className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]"
+        >
           <Database className="w-5 h-5 mr-3" />
           <span>資料匯出</span>
         </Button>
@@ -216,6 +272,12 @@ const Profile = () => {
       <CurrencySettingsDialog
         open={currencyDialogOpen}
         onOpenChange={setCurrencyDialogOpen}
+      />
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onOpenChange={setSettingsDialogOpen}
       />
     </div>
   );

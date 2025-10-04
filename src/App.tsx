@@ -3,8 +3,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
-import Home from "./pages/Home";
+import DefaultRoute from "./components/DefaultRoute";
 import Map from "./pages/Map";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
@@ -37,22 +38,23 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <CurrencyProvider>
-          <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Home />
-                <BottomNav />
-              </ProtectedRoute>
-            }
-          />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <CurrencyProvider>
+            <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DefaultRoute />
+                  <BottomNav />
+                </ProtectedRoute>
+              }
+            />
           <Route
             path="/map"
             element={
@@ -94,6 +96,7 @@ const App = () => (
         </CurrencyProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

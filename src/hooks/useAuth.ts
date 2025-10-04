@@ -52,8 +52,8 @@ export const useAuth = () => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
-            // Ensure we land on the home page and don't go back to /auth
-            window.location.replace('/');
+            // Break out of any iframes and redirect to home
+            (window.top ?? window).location.replace('/');
           });
         }
       } catch (err) {
