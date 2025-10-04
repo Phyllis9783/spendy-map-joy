@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,16 @@ const signUpSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Sign in state
+  // If already logged in, leave /auth immediately
+  useEffect(() => {
+    if (user) {
+      window.location.replace("/");
+    }
+  }, [user]);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
 
@@ -68,7 +73,7 @@ const Auth = () => {
     setLoading(false);
 
     if (data && !error) {
-      navigate("/");
+      window.location.replace("/");
     }
   };
 
@@ -117,7 +122,7 @@ const Auth = () => {
     setLoading(false);
 
     if (data && !error) {
-      navigate("/");
+      window.location.replace("/");
     }
   };
 
