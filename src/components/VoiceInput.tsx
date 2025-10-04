@@ -39,6 +39,7 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentLanguageIndex = useRef(0);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -46,6 +47,22 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 組件卸載時釋放麥克風
+  useEffect(() => {
+    return () => {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   const preprocessText = (text: string): string => {
@@ -70,7 +87,8 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     }
 
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
       console.log('Microphone permission granted');
     } catch (error: any) {
       console.error('Microphone permission error:', error);
@@ -220,6 +238,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         timeoutRef.current = null;
       }
 
+      // 釋放麥克風
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+      }
+
       if (interimText && !recognizedText && isRecording) {
         console.log('Processing interim text as final:', interimText);
         const preprocessed = preprocessText(interimText);
@@ -350,6 +374,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
+    }
+
+    // 釋放麥克風
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
     }
   };
 
