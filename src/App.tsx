@@ -13,6 +13,7 @@ import MyChallenges from "./pages/MyChallenges";
 import SecurityDashboard from "./pages/SecurityDashboard";
 import BottomNav from "./components/BottomNav";
 import { Loader2 } from "lucide-react";
+import { CurrencyProvider } from "./contexts/CurrencyContext";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +41,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
+        <CurrencyProvider>
+          <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route
             path="/"
@@ -88,7 +90,8 @@ const App = () => (
             }
           />
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </CurrencyProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
