@@ -42,27 +42,6 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Listen for auth completion messages from popup windows
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      try {
-        if (e.origin !== window.location.origin) return;
-        if (e.data?.type === 'auth:SIGNED_IN') {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            setLoading(false);
-            // Break out of any iframes and redirect to home
-            (window.top ?? window).location.replace('/');
-          });
-        }
-      } catch (err) {
-        console.error('auth message handler error:', err);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     try {
@@ -186,63 +165,19 @@ export const useAuth = () => {
   };
 
   const signInWithGoogle = async () => {
-    // Open pop-up window synchronously to avoid popup blockers
-    const popup = window.open('', '_blank', 'width=500,height=600,noopener,noreferrer');
-    
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
+          skipBrowserRedirect: false,
         },
       });
-
       if (error) throw error;
-
-      // Handle redirection with fallback mechanisms
-      if (data?.url) {
-        if (popup && !popup.closed) {
-          // Pop-up is available, use it
-          popup.location.href = data.url;
-        } else {
-          // Pop-up blocked or failed, use fallback strategies
-          try {
-            // Close any blank popup if present
-            if (popup && !popup.closed) {
-              try { popup.close(); } catch {}
-            }
-            // Try to redirect top-level window (works in iframe)
-            if (window.top && window.top !== window) {
-              (window.top as Window).location.href = data.url;
-            } else {
-              // Redirect current window
-              window.location.href = data.url;
-            }
-          } catch {
-            // Final fallback: create invisible link and click it
-            const link = document.createElement('a');
-            link.href = data.url;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-        }
-      }
-
       return { data, error: null };
     } catch (error: any) {
       console.error('Google sign in error:', error);
-      
-      // Close the pop-up if there's an error
-      if (popup && !popup.closed) {
-        popup.close();
-      }
-      
       toast({
         title: "Google 登入失敗",
         description: error.message,

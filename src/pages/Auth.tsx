@@ -34,7 +34,8 @@ const Auth = () => {
   // If already logged in, leave /auth immediately
   useEffect(() => {
     if (user) {
-      window.location.replace("/");
+      const startPage = localStorage.getItem('startPage') || '/';
+      (window.top ?? window).location.replace(startPage);
     }
   }, [user]);
   const [signInEmail, setSignInEmail] = useState("");
@@ -73,7 +74,8 @@ const Auth = () => {
     setLoading(false);
 
     if (data && !error) {
-      window.location.replace("/");
+      const startPage = localStorage.getItem('startPage') || '/';
+      (window.top ?? window).location.replace(startPage);
     }
   };
 
@@ -122,7 +124,8 @@ const Auth = () => {
     setLoading(false);
 
     if (data && !error) {
-      window.location.replace("/");
+      const startPage = localStorage.getItem('startPage') || '/';
+      (window.top ?? window).location.replace(startPage);
     }
   };
 
