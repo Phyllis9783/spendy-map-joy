@@ -17,6 +17,16 @@ export const useAuth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // If this window is a popup, notify opener and close after successful sign-in
+        if (event === 'SIGNED_IN' && typeof window !== 'undefined' && window.opener && !window.opener.closed) {
+          try {
+            window.opener.postMessage({ type: 'auth:SIGNED_IN' }, window.location.origin);
+          } catch (e) {
+            console.error('postMessage error:', e);
+          }
+          try { window.close(); } catch {}
+        }
       }
     );
 
@@ -28,6 +38,28 @@ export const useAuth = () => {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Listen for auth completion messages from popup windows
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      try {
+        if (e.origin !== window.location.origin) return;
+        if (e.data?.type === 'auth:SIGNED_IN') {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+            // Ensure we land on the home page and don't go back to /auth
+            window.location.replace('/');
+          });
+        }
+      } catch (err) {
+        console.error('auth message handler error:', err);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
@@ -176,9 +208,13 @@ export const useAuth = () => {
         } else {
           // Pop-up blocked or failed, use fallback strategies
           try {
+            // Close any blank popup if present
+            if (popup && !popup.closed) {
+              try { popup.close(); } catch {}
+            }
             // Try to redirect top-level window (works in iframe)
             if (window.top && window.top !== window) {
-              window.top.location.href = data.url;
+              (window.top as Window).location.href = data.url;
             } else {
               // Redirect current window
               window.location.href = data.url;
