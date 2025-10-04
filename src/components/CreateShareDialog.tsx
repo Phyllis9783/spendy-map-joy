@@ -113,7 +113,7 @@ const CreateShareDialog = ({ open, onOpenChange, expense }: CreateShareDialogPro
             <div className="bg-gradient-to-br from-primary/5 to-secondary/5 p-4 rounded-lg space-y-2 border border-primary/20">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">金額</span>
-                <span className="font-bold text-lg bg-gradient-primary bg-clip-text text-transparent">
+                <span className="font-bold text-2xl text-primary">
                   {formatCurrency(expense.amount, currency)}
                 </span>
               </div>
