@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Clock, DollarSign, Tag, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 
 interface Expense {
   id: string;
@@ -22,6 +24,8 @@ interface ExpenseDetailDialogProps {
 }
 
 const ExpenseDetailDialog = ({ open, onOpenChange, expense }: ExpenseDetailDialogProps) => {
+  const { currency } = useCurrency();
+  
   if (!expense) return null;
 
   const getCategoryName = (category: string) => {
@@ -76,7 +80,7 @@ const ExpenseDetailDialog = ({ open, onOpenChange, expense }: ExpenseDetailDialo
               <div className="text-center space-y-2">
                 <DollarSign className="w-10 h-10 mx-auto text-primary" />
                 <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  ${expense.amount}
+                  {formatCurrency(expense.amount, currency)}
                 </p>
                 <p className="text-sm text-muted-foreground">消費金額</p>
               </div>

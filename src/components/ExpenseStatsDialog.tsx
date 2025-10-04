@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Calendar, PieChart } from "lucide-react";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 
 interface Expense {
   amount: number;
@@ -17,6 +19,8 @@ interface ExpenseStatsDialogProps {
 }
 
 const ExpenseStatsDialog = ({ open, onOpenChange, expenses, totalAmount, dateRange }: ExpenseStatsDialogProps) => {
+  const { currency } = useCurrency();
+  
   // Calculate category stats
   const categoryStats = expenses.reduce((acc, exp) => {
     acc[exp.category] = (acc[exp.category] || 0) + Number(exp.amount);
@@ -69,7 +73,7 @@ const ExpenseStatsDialog = ({ open, onOpenChange, expenses, totalAmount, dateRan
                 <Calendar className="w-8 h-8 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">{dateRange}</p>
                 <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  ${Math.round(totalAmount)}
+                  {formatCurrency(totalAmount, currency)}
                 </p>
                 <p className="text-xs text-muted-foreground">總消費金額</p>
               </div>
@@ -105,7 +109,7 @@ const ExpenseStatsDialog = ({ open, onOpenChange, expenses, totalAmount, dateRan
                           </span>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold">${Math.round(amount)}</p>
+                          <p className="font-bold">{formatCurrency(amount, currency)}</p>
                           <p className="text-xs text-muted-foreground">
                             {percentage}%
                           </p>

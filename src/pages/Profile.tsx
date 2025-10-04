@@ -1,4 +1,4 @@
-import { User, Settings, Database, TrendingUp, Award, LogOut, Shield, CheckCircle, AlertTriangle } from "lucide-react";
+import { User, Settings, Database, TrendingUp, Award, LogOut, Shield, CheckCircle, AlertTriangle, DollarSign } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkSuspiciousActivity } from "@/lib/locationSecurity";
 import ConsumptionDashboard from "@/components/ConsumptionDashboard";
+import CurrencySettingsDialog from "@/components/CurrencySettingsDialog";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 
 interface Profile {
   full_name: string | null;
@@ -31,7 +34,9 @@ const Profile = () => {
   });
   const [securityStatus, setSecurityStatus] = useState<'safe' | 'warning'>('safe');
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const { currency } = useCurrency();
 
   useEffect(() => {
     if (user) {
@@ -125,8 +130,8 @@ const Profile = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">總消費</p>
-              <p className="text-3xl font-bold mt-1">NT$ {Math.round(stats.monthlyTotal)}</p>
+              <p className="text-sm text-muted-foreground">總消費（最近30天）</p>
+              <p className="text-3xl font-bold mt-1">{formatCurrency(stats.monthlyTotal, currency)}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-primary" />
           </div>
@@ -165,6 +170,15 @@ const Profile = () => {
           )}
         </Button>
 
+        <Button 
+          variant="ghost" 
+          onClick={() => setCurrencyDialogOpen(true)}
+          className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]"
+        >
+          <DollarSign className="w-5 h-5 mr-3" />
+          <span>幣值設定</span>
+        </Button>
+
         <Button variant="ghost" className="w-full justify-start h-14 glass-card transition-smooth hover:scale-[1.02]">
           <Settings className="w-5 h-5 mr-3" />
           <span>設定</span>
@@ -196,6 +210,12 @@ const Profile = () => {
         open={dashboardOpen}
         onOpenChange={setDashboardOpen}
         expenses={expenses}
+      />
+
+      {/* Currency Settings Dialog */}
+      <CurrencySettingsDialog
+        open={currencyDialogOpen}
+        onOpenChange={setCurrencyDialogOpen}
       />
     </div>
   );

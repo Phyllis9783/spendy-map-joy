@@ -18,14 +18,20 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // If this window is a popup, notify opener and close after successful sign-in
-        if (event === 'SIGNED_IN' && typeof window !== 'undefined' && window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage({ type: 'auth:SIGNED_IN' }, window.location.origin);
-          } catch (e) {
-            console.error('postMessage error:', e);
+        // Force redirect to home after successful sign-in
+        if (event === 'SIGNED_IN') {
+          // If this window is a popup, notify opener and close
+          if (typeof window !== 'undefined' && window.opener && !window.opener.closed) {
+            try {
+              window.opener.postMessage({ type: 'auth:SIGNED_IN' }, window.location.origin);
+            } catch (e) {
+              console.error('postMessage error:', e);
+            }
+            try { window.close(); } catch {}
+          } else {
+            // Main window - force redirect to home
+            window.location.href = '/';
           }
-          try { window.close(); } catch {}
         }
       }
     );

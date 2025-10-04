@@ -5,6 +5,8 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Toolti
 import { Calendar, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
 import { format, startOfDay, subDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 
 interface Expense {
   amount: number;
@@ -28,6 +30,8 @@ const COLORS = {
 };
 
 const ConsumptionDashboard = ({ open, onOpenChange, expenses }: ConsumptionDashboardProps) => {
+  const { currency } = useCurrency();
+
   // Calculate daily consumption for last 7 days
   const getDailyData = () => {
     const dailyMap = new Map<string, number>();
@@ -97,7 +101,7 @@ const ConsumptionDashboard = ({ open, onOpenChange, expenses }: ConsumptionDashb
                 <Calendar className="w-8 h-8 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">最近 30 天</p>
                 <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  ${Math.round(totalAmount)}
+                  {formatCurrency(totalAmount, currency)}
                 </p>
                 <p className="text-xs text-muted-foreground">總消費金額</p>
               </div>
@@ -205,7 +209,7 @@ const ConsumptionDashboard = ({ open, onOpenChange, expenses }: ConsumptionDashb
                           />
                           <span className="text-sm font-medium">{item.name}</span>
                         </div>
-                        <span className="font-bold">${item.value}</span>
+                        <span className="font-bold">{formatCurrency(item.value, currency)}</span>
                       </div>
                     ))}
                   </div>

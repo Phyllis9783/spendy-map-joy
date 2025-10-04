@@ -396,6 +396,7 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           location_lng: expense.location_lng,
           expense_date: expense.expense_date,
           voice_input: text,
+          currency: 'TWD',
         });
 
       if (insertError) throw insertError;

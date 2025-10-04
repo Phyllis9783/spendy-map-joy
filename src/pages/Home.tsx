@@ -18,6 +18,8 @@ import { motion } from "framer-motion";
 import CountUp from "react-countup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trackAllChallenges } from "@/lib/challengeTracker";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 interface Expense {
   id: string;
   amount: number;
@@ -46,10 +48,9 @@ const Home = () => {
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedExpenseForDetail, setSelectedExpenseForDetail] = useState<Expense | null>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
   const navigate = useNavigate();
+  const { currency } = useCurrency();
   const fetchExpenses = async () => {
     try {
       const {
@@ -323,7 +324,7 @@ const Home = () => {
                   <TrendingUp className="w-8 h-8 mx-auto text-primary" />
                 </motion.div>
                 <p className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  $<CountUp end={stats.totalAmount} duration={1.5} />
+                  {formatCurrency(stats.totalAmount, currency)}
                 </p>
                 <p className="text-xs text-muted-foreground font-medium">最近30天消費</p>
               </div>
@@ -508,7 +509,7 @@ const Home = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-foreground">
-                        ${expense.amount}
+                        {formatCurrency(expense.amount, currency)}
                       </p>
                     </div>
                   </CardTitle>

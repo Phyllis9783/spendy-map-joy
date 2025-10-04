@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Share2, Copy, Facebook, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { formatCurrency } from "@/lib/currency";
 
 interface Expense {
   id: string;
@@ -24,6 +26,7 @@ interface CreateShareDialogProps {
 const CreateShareDialog = ({ open, onOpenChange, expense }: CreateShareDialogProps) => {
   const [shareText, setShareText] = useState("");
   const { toast } = useToast();
+  const { currency } = useCurrency();
 
   const getCategoryEmoji = (category: string) => {
     const emojis: { [key: string]: string } = {
@@ -41,7 +44,8 @@ const CreateShareDialog = ({ open, onOpenChange, expense }: CreateShareDialogPro
     if (!expense) return "";
     const emoji = getCategoryEmoji(expense.category);
     const location = expense.location_name ? ` 在${expense.location_name}` : '';
-    return `${emoji} 今天${location}花了 $${expense.amount}\n📝 ${expense.description}\n💡 使用 Spendy Map 記帳，輕鬆管理每一筆消費！`;
+    const formattedAmount = formatCurrency(expense.amount, currency);
+    return `${emoji} 今天${location}花了 ${formattedAmount}\n📝 ${expense.description}\n💡 使用 Spendy Map 記帳，輕鬆管理每一筆消費！`;
   };
 
   const handleOpen = () => {
@@ -110,7 +114,7 @@ const CreateShareDialog = ({ open, onOpenChange, expense }: CreateShareDialogPro
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">金額</span>
                 <span className="font-bold text-lg bg-gradient-primary bg-clip-text text-transparent">
-                  ${expense.amount}
+                  {formatCurrency(expense.amount, currency)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
