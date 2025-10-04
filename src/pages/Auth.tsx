@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Copy, CheckCircle } from "lucide-react";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { isInAppBrowser, isMobileDevice, getOpenInBrowserHint } from "@/lib/browserDetection";
@@ -32,11 +32,30 @@ const Auth = () => {
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [showGoogleHint, setShowGoogleHint] = useState(false);
+  const [isInApp, setIsInApp] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setShowGoogleHint(isInAppBrowser());
+    setIsInApp(isInAppBrowser());
   }, []);
+
+  const copyCurrentUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      toast({
+        title: "已複製連結",
+        description: "請貼到外部瀏覽器開啟",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "複製失敗",
+        description: "請手動複製網址列的連結",
+        variant: "destructive",
+      });
+    }
+  };
 
   // If already logged in, leave /auth immediately
   useEffect(() => {
@@ -200,11 +219,41 @@ const Auth = () => {
                   </div>
                 </div>
 
-                {showGoogleHint && (
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-sm">
-                      {getOpenInBrowserHint()}
+                {isInApp && (
+                  <Alert className="mb-4 border-destructive/50 bg-destructive/10">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <AlertDescription className="space-y-3">
+                      <p className="text-sm font-semibold text-destructive">
+                        ⚠️ 偵測到內嵌瀏覽器環境
+                      </p>
+                      <p className="text-sm">
+                        Google 不支援在應用程式內嵌瀏覽器中登入。
+                      </p>
+                      <p className="text-sm font-medium">
+                        {getOpenInBrowserHint()}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={copyCurrentUrl}
+                        className="w-full mt-2"
+                      >
+                        {copied ? (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                            已複製連結
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="mr-2 h-4 w-4" />
+                            複製網址並在瀏覽器開啟
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        或者，您可以直接使用 Email 登入 👇
+                      </p>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -213,8 +262,9 @@ const Auth = () => {
                   type="button"
                   variant="outline"
                   onClick={() => signInWithGoogle()}
-                  disabled={loading}
+                  disabled={loading || isInApp}
                   className="w-full transition-smooth"
+                  title={isInApp ? "請在外部瀏覽器中使用 Google 登入" : ""}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path
@@ -316,11 +366,41 @@ const Auth = () => {
                   </div>
                 </div>
 
-                {showGoogleHint && (
-                  <Alert className="mb-4">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-sm">
-                      {getOpenInBrowserHint()}
+                {isInApp && (
+                  <Alert className="mb-4 border-destructive/50 bg-destructive/10">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <AlertDescription className="space-y-3">
+                      <p className="text-sm font-semibold text-destructive">
+                        ⚠️ 偵測到內嵌瀏覽器環境
+                      </p>
+                      <p className="text-sm">
+                        Google 不支援在應用程式內嵌瀏覽器中登入。
+                      </p>
+                      <p className="text-sm font-medium">
+                        {getOpenInBrowserHint()}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={copyCurrentUrl}
+                        className="w-full mt-2"
+                      >
+                        {copied ? (
+                          <>
+                            <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                            已複製連結
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="mr-2 h-4 w-4" />
+                            複製網址並在瀏覽器開啟
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        或者，您可以直接使用 Email 註冊 👇
+                      </p>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -329,8 +409,9 @@ const Auth = () => {
                   type="button"
                   variant="outline"
                   onClick={() => signInWithGoogle()}
-                  disabled={loading}
+                  disabled={loading || isInApp}
                   className="w-full transition-smooth"
+                  title={isInApp ? "請在外部瀏覽器中使用 Google 登入" : ""}
                 >
                   <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                     <path
