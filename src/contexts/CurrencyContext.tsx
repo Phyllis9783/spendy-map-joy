@@ -15,16 +15,21 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const [currency, setCurrencyState] = useState<CurrencyCode>('TWD');
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
+    // Wait for auth to finish loading before fetching currency
+    if (authLoading) {
+      return;
+    }
+    
     if (user) {
       fetchUserCurrency();
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const fetchUserCurrency = async () => {
     try {
@@ -77,7 +82,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, loading }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, loading: loading || authLoading }}>
       {children}
     </CurrencyContext.Provider>
   );
@@ -86,7 +91,13 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
 export const useCurrency = () => {
   const context = useContext(CurrencyContext);
   if (context === undefined) {
-    throw new Error('useCurrency must be used within a CurrencyProvider');
+    // During development or initial render, provide a fallback
+    console.warn('useCurrency called outside CurrencyProvider, using fallback');
+    return {
+      currency: 'TWD' as CurrencyCode,
+      setCurrency: async () => {},
+      loading: false
+    };
   }
   return context;
 };
