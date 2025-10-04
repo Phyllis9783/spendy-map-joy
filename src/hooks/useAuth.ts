@@ -168,11 +168,32 @@ export const useAuth = () => {
 
       if (error) throw error;
 
-      // Redirect the pop-up to Google's OAuth page
-      if (data?.url && popup) {
-        popup.location.href = data.url;
-      } else if (!popup) {
-        throw new Error('彈出視窗被封鎖，請允許彈出視窗後重試');
+      // Handle redirection with fallback mechanisms
+      if (data?.url) {
+        if (popup && !popup.closed) {
+          // Pop-up is available, use it
+          popup.location.href = data.url;
+        } else {
+          // Pop-up blocked or failed, use fallback strategies
+          try {
+            // Try to redirect top-level window (works in iframe)
+            if (window.top && window.top !== window) {
+              window.top.location.href = data.url;
+            } else {
+              // Redirect current window
+              window.location.href = data.url;
+            }
+          } catch {
+            // Final fallback: create invisible link and click it
+            const link = document.createElement('a');
+            link.href = data.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+        }
       }
 
       return { data, error: null };
@@ -180,7 +201,7 @@ export const useAuth = () => {
       console.error('Google sign in error:', error);
       
       // Close the pop-up if there's an error
-      if (popup) {
+      if (popup && !popup.closed) {
         popup.close();
       }
       
