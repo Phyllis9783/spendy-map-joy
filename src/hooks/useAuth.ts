@@ -152,6 +152,9 @@ export const useAuth = () => {
   };
 
   const signInWithGoogle = async () => {
+    // Open pop-up window synchronously to avoid popup blockers
+    const popup = window.open('', '_blank', 'width=500,height=600,noopener,noreferrer');
+    
     try {
       const redirectUrl = `${window.location.origin}/`;
       
@@ -159,14 +162,27 @@ export const useAuth = () => {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
         },
       });
 
       if (error) throw error;
 
+      // Redirect the pop-up to Google's OAuth page
+      if (data?.url && popup) {
+        popup.location.href = data.url;
+      } else if (!popup) {
+        throw new Error('彈出視窗被封鎖，請允許彈出視窗後重試');
+      }
+
       return { data, error: null };
     } catch (error: any) {
       console.error('Google sign in error:', error);
+      
+      // Close the pop-up if there's an error
+      if (popup) {
+        popup.close();
+      }
       
       toast({
         title: "Google 登入失敗",
