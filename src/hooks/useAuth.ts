@@ -11,30 +11,26 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session);
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session);
+      setSession(session);
+      setUser(session?.user ?? null);
 
-        // Force redirect to home after successful sign-in
-        if (event === 'SIGNED_IN') {
-          // If this window is a popup, notify opener and close
-          if (typeof window !== 'undefined' && window.opener && !window.opener.closed) {
-            try {
-              window.opener.postMessage({ type: 'auth:SIGNED_IN' }, window.location.origin);
-            } catch (e) {
-              console.error('postMessage error:', e);
-            }
-            try { window.close(); } catch {}
-          } else {
-            // Main window - force redirect to home
-            window.location.href = '/';
-          }
-        }
+      // Avoid ending loading during INITIAL_SESSION to prevent premature redirects
+      if (event !== 'INITIAL_SESSION') {
+        setLoading(false);
       }
-    );
+
+      // If this window is a popup, notify opener and close after sign-in
+      if (event === 'SIGNED_IN' && typeof window !== 'undefined' && window.opener && !window.opener.closed) {
+        try {
+          window.opener.postMessage({ type: 'auth:SIGNED_IN' }, window.location.origin);
+        } catch (e) {
+          console.error('postMessage error:', e);
+        }
+        try { window.close(); } catch {}
+      }
+    });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
