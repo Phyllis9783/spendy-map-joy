@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -17,6 +18,7 @@ interface SettingsDialogProps {
 const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const { theme, setTheme } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [startPage, setStartPage] = useState<string>('/');
   const [isExporting, setIsExporting] = useState(false);
 
@@ -85,7 +87,7 @@ const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     if (confirm('確定要清除本地快取並重新載入嗎？這將登出您的帳號。')) {
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = '/auth';
+      navigate('/auth', { replace: true });
     }
   };
 

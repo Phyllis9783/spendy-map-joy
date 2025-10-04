@@ -61,9 +61,9 @@ const Auth = () => {
   useEffect(() => {
     if (user) {
       const startPage = localStorage.getItem('startPage') || '/';
-      (window.top ?? window).location.replace(startPage);
+      navigate(startPage, { replace: true });
     }
-  }, [user]);
+  }, [user, navigate]);
   const [signInEmail, setSignInEmail] = useState("");
   const [signInPassword, setSignInPassword] = useState("");
 
@@ -101,7 +101,7 @@ const Auth = () => {
 
     if (data && !error) {
       const startPage = localStorage.getItem('startPage') || '/';
-      (window.top ?? window).location.replace(startPage);
+      navigate(startPage, { replace: true });
     }
   };
 
@@ -151,7 +151,7 @@ const Auth = () => {
 
     if (data && !error) {
       const startPage = localStorage.getItem('startPage') || '/';
-      (window.top ?? window).location.replace(startPage);
+      navigate(startPage, { replace: true });
     }
   };
 
