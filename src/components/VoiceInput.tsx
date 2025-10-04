@@ -104,12 +104,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     recognitionRef.current = new SpeechRecognition();
     
-    const languages = ['zh-CN', 'zh-HK', 'zh-TW', 'zh', 'en-US'];
+    const languages = ['zh-TW', 'zh-HK', 'zh', 'zh-CN', 'en-US'];
     recognitionRef.current.lang = languages[currentLanguageIndex.current];
     
     recognitionRef.current.continuous = false;
     recognitionRef.current.interimResults = true;
-    recognitionRef.current.maxAlternatives = 3;
+    recognitionRef.current.maxAlternatives = 5;
     
     console.log('Starting speech recognition with language:', recognitionRef.current.lang);
 
