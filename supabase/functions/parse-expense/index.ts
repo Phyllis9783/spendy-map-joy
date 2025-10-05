@@ -261,7 +261,17 @@ serve(async (req) => {
 
     // Validate required fields
     if (!parsedExpense.amount || !parsedExpense.category) {
-      throw new Error('Missing required fields: amount or category');
+      return new Response(
+        JSON.stringify({ 
+          error: 'MISSING_AMOUNT',
+          message: '未偵測到金額，請說出完整的消費資訊，例如：星巴克咖啡 150 元',
+          parsed: parsedExpense 
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
     }
 
     // Safeguard: Check if year needs correction
