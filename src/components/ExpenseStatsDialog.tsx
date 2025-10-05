@@ -72,7 +72,7 @@ const ExpenseStatsDialog = ({ open, onOpenChange, expenses, totalAmount, dateRan
               <div className="text-center space-y-2">
                 <Calendar className="w-8 h-8 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">{dateRange}</p>
-                <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                <p className="text-4xl font-bold text-primary">
                   {formatCurrency(totalAmount, currency)}
                 </p>
                 <p className="text-xs text-muted-foreground">總消費金額</p>

@@ -100,7 +100,7 @@ const ConsumptionDashboard = ({ open, onOpenChange, expenses }: ConsumptionDashb
               <div className="text-center space-y-2">
                 <Calendar className="w-8 h-8 mx-auto text-primary" />
                 <p className="text-sm text-muted-foreground">最近 30 天</p>
-                <p className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                <p className="text-4xl font-bold text-primary">
                   {formatCurrency(totalAmount, currency)}
                 </p>
                 <p className="text-xs text-muted-foreground">總消費金額</p>
