@@ -462,6 +462,19 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
           await fetchUsage();
           return;
         }
+        
+        // Handle missing amount error
+        if (data.error === 'MISSING_AMOUNT') {
+          toast({
+            title: "缺少金額資訊",
+            description: data.message,
+          });
+          setShowManualInput(true);
+          setManualText(text);
+          setIsProcessing(false);
+          return;
+        }
+        
         throw new Error(data.error || 'Failed to parse expense');
       }
 

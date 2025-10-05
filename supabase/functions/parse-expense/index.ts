@@ -263,12 +263,13 @@ serve(async (req) => {
     if (!parsedExpense.amount || !parsedExpense.category) {
       return new Response(
         JSON.stringify({ 
+          success: false,
           error: 'MISSING_AMOUNT',
           message: '未偵測到金額，請說出完整的消費資訊，例如：星巴克咖啡 150 元',
           parsed: parsedExpense 
         }),
         { 
-          status: 400,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
