@@ -355,8 +355,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
         reader.onerror = reject;
       });
 
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audio: base64Audio }
+        body: { audio: base64Audio },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
 
       if (error) throw error;
@@ -438,8 +442,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     setIsProcessing(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('parse-expense', {
-        body: { text }
+        body: { text },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
       });
 
       if (error) throw error;
