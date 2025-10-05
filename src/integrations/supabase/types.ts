@@ -199,6 +199,59 @@ export type Database = {
         }
         Relationships: []
       }
+      public_shared_expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          expense_date: string | null
+          id: string
+          location_lat_obfuscated: number | null
+          location_lng_obfuscated: number | null
+          location_name: string | null
+          share_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string
+          location_lat_obfuscated?: number | null
+          location_lng_obfuscated?: number | null
+          location_name?: string | null
+          share_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          expense_date?: string | null
+          id?: string
+          location_lat_obfuscated?: number | null
+          location_lng_obfuscated?: number | null
+          location_name?: string | null
+          share_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_shared_expenses_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shares: {
         Row: {
           created_at: string | null
@@ -364,6 +417,10 @@ export type Database = {
       cleanup_old_location_logs: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      create_public_shared_expense: {
+        Args: { _expense_id: string; _share_id: string }
+        Returns: string
       }
       get_expenses_low_precision: {
         Args: Record<PropertyKey, never>
