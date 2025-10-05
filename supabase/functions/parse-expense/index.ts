@@ -13,10 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    // Get authorization header
-    const authHeader = req.headers.get('Authorization');
+    // Get authorization header (case-insensitive)
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized: missing token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Create Supabase client
@@ -26,16 +29,32 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Get user
+    // Resolve user id via Supabase, with JWT fallback
+    let userId: string | null = null;
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    if (user && !userError) {
+      userId = user.id;
+    } else {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1] || ''));
+        if (payload?.sub && typeof payload.sub === 'string') {
+          userId = payload.sub;
+        }
+      } catch (_) { /* ignore decode errors */ }
+    }
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Check usage limit
     const { data: usageCheck, error: usageError } = await supabaseClient.rpc(
       'check_and_increment_usage',
-      { _user_id: user.id, _limit_type: 'ai_parse', _max_limit: 20 }
+      { _user_id: userId, _limit_type: 'ai_parse', _max_limit: 20 }
     );
 
     if (usageError) {
