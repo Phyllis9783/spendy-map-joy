@@ -36,20 +36,71 @@ const Auth = () => {
   const [copied, setCopied] = useState(false);
   const [oauthError, setOauthError] = useState<string | null>(null);
   const [oauthErrorDesc, setOauthErrorDesc] = useState<string | null>(null);
+  const [diagnosticCopied, setDiagnosticCopied] = useState(false);
+
+  const getErrorGuidance = (error: string) => {
+    const errorMap: Record<string, string> = {
+      'invalid_client': '❌ Client ID/Secret 不正確。請確認後台 Google Provider 設定的 Client ID 與 Secret 與 Google Cloud Console 完全一致。',
+      'redirect_uri_mismatch': '❌ Redirect URI 不符。請在 Google Cloud Console 的「已授權的重新導向 URI」中，加入後台顯示的完整 Callback URL。',
+      'origin_mismatch': '❌ JavaScript Origin 不符。請在 Google Cloud Console 的「已授權的 JavaScript 來源」中，加入目前網站的完整網址（含 https://）。',
+      'access_denied': '⚠️ 存取被拒絕。請確認 Google OAuth Consent Screen 已設為 Production，或您的帳號已加入測試使用者名單。',
+      'unauthorized_client': '❌ 未經授權的 Client。請檢查 Google Cloud Console 的 OAuth 同意畫面設定，確認應用程式已正確設定。'
+    };
+    return errorMap[error] || '發生未知錯誤，請檢查後台設定與 Google Cloud Console 設定是否一致。';
+  };
+
+  const copyDiagnosticInfo = async () => {
+    const info = `
+【OAuth 診斷資訊】
+錯誤代碼: ${oauthError}
+錯誤描述: ${oauthErrorDesc || '無'}
+目前網址: ${window.location.origin}
+完整路徑: ${window.location.href}
+User Agent: ${navigator.userAgent}
+時間: ${new Date().toISOString()}
+    `.trim();
+    
+    try {
+      await navigator.clipboard.writeText(info);
+      setDiagnosticCopied(true);
+      toast({
+        title: "已複製診斷資訊",
+        description: "可提供給技術支援團隊",
+      });
+      setTimeout(() => setDiagnosticCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "複製失敗",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     setIsInApp(isInAppBrowser());
 
-    // Parse OAuth errors from redirect params
-    const params = new URLSearchParams(window.location.search);
-    const err = params.get('error') || params.get('error_code');
-    const desc = params.get('error_description') || params.get('error_message');
+    // Parse OAuth errors from BOTH search params AND hash
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    
+    const err = searchParams.get('error') || 
+                searchParams.get('error_code') || 
+                hashParams.get('error') ||
+                hashParams.get('error_code');
+    
+    const desc = searchParams.get('error_description') || 
+                 searchParams.get('error_message') ||
+                 hashParams.get('error_description') ||
+                 hashParams.get('error_message');
+    
     if (err) {
-      setOauthError(err);
-      setOauthErrorDesc(desc);
+      setOauthError(decodeURIComponent(err));
+      setOauthErrorDesc(desc ? decodeURIComponent(desc) : null);
+      
       // Clean the URL to avoid showing the alert repeatedly
       const url = new URL(window.location.href);
       url.search = '';
+      url.hash = '';
       window.history.replaceState({}, document.title, url.toString());
     }
   }, []);
@@ -187,12 +238,51 @@ const Auth = () => {
           {oauthError && (
             <Alert className="mb-4 border-destructive/50 bg-destructive/10">
               <AlertCircle className="h-4 w-4 text-destructive" />
-              <AlertDescription className="space-y-2">
-                <p className="text-sm font-semibold text-destructive">Google 登入失敗（{oauthError}）</p>
-                {oauthErrorDesc && <p className="text-sm">{oauthErrorDesc}</p>}
-                <p className="text-xs text-muted-foreground">
-                  若顯示「You do not have access to this page」，請在後台將 Google OAuth 轉為 External/Production，或把您的帳號加入測試名單，並確認 Redirect URLs 已正確設定。
+              <AlertDescription className="space-y-3">
+                <p className="text-sm font-semibold text-destructive">
+                  Google 登入失敗：{oauthError}
                 </p>
+                {oauthErrorDesc && (
+                  <p className="text-sm text-foreground/80">
+                    {oauthErrorDesc}
+                  </p>
+                )}
+                <div className="text-sm bg-background/50 p-3 rounded-md border border-border">
+                  {getErrorGuidance(oauthError)}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={copyDiagnosticInfo}
+                    className="flex-1"
+                  >
+                    {diagnosticCopied ? (
+                      <>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        已複製診斷資訊
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="mr-2 h-4 w-4" />
+                        複製診斷資訊
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setOauthError(null);
+                      setOauthErrorDesc(null);
+                      signInWithGoogle();
+                    }}
+                    className="flex-1"
+                  >
+                    重試 Google 登入
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
