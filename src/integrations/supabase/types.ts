@@ -216,6 +216,39 @@ export type Database = {
           },
         ]
       }
+      usage_limits: {
+        Row: {
+          created_at: string | null
+          id: string
+          limit_type: string
+          max_daily_limit: number
+          updated_at: string | null
+          usage_count: number
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          limit_type: string
+          max_daily_limit?: number
+          updated_at?: string | null
+          usage_count?: number
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          limit_type?: string
+          max_daily_limit?: number
+          updated_at?: string | null
+          usage_count?: number
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_challenges: {
         Row: {
           challenge_id: string
@@ -295,6 +328,10 @@ export type Database = {
         Args: { _expense_id: string }
         Returns: boolean
       }
+      check_and_increment_usage: {
+        Args: { _limit_type: string; _max_limit?: number; _user_id: string }
+        Returns: Json
+      }
       check_suspicious_location_access: {
         Args: { _user_id: string }
         Returns: {
@@ -324,6 +361,10 @@ export type Database = {
           user_id: string
           voice_input: string
         }[]
+      }
+      get_usage_status: {
+        Args: { _user_id: string }
+        Returns: Json
       }
       log_location_access: {
         Args: { _access_type: string; _expense_id: string }

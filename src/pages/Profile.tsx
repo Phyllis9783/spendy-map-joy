@@ -1,4 +1,16 @@
-import { User, Settings, Database, TrendingUp, Award, LogOut, Shield, CheckCircle, AlertTriangle, DollarSign } from "lucide-react";
+import { 
+  User, 
+  Settings, 
+  Database, 
+  TrendingUp, 
+  Award, 
+  LogOut, 
+  Shield, 
+  CheckCircle, 
+  AlertTriangle, 
+  DollarSign,
+  Activity
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +51,7 @@ const Profile = () => {
   const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [usageInfo, setUsageInfo] = useState<any>(null);
   const { currency } = useCurrency();
 
   useEffect(() => {
@@ -46,8 +59,19 @@ const Profile = () => {
       fetchProfile();
       fetchStats();
       checkSecurity();
+      fetchUsage();
     }
   }, [user]);
+
+  const fetchUsage = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase.rpc('get_usage_status', { _user_id: user.id });
+    if (!error && data) {
+      setUsageInfo(data);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -193,6 +217,46 @@ const Profile = () => {
             </div>
             <Award className="w-8 h-8 text-secondary" />
           </div>
+        </Card>
+
+        <Card className="p-6 glass-card shadow-md interactive-lift">
+          <div className="flex items-center gap-3 mb-2">
+            <Activity className="w-5 h-5 text-blue-500" />
+            <h3 className="font-semibold">今日使用量</h3>
+          </div>
+          {usageInfo ? (
+            <div className="space-y-3 mt-4">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">語音輸入</span>
+                  <span className="font-semibold">{usageInfo.voice_input?.remaining || 0}/20</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((usageInfo.voice_input?.current_usage || 0) / 20) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">AI 解析</span>
+                  <span className="font-semibold">{usageInfo.ai_parse?.remaining || 0}/20</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div 
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((usageInfo.ai_parse?.current_usage || 0) / 20) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground text-center mt-2">
+                明天 00:00 重置
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-2">載入中...</p>
+          )}
         </Card>
       </div>
 

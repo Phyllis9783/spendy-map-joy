@@ -35,11 +35,30 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [usageInfo, setUsageInfo] = useState<{voice_input?: any, ai_parse?: any} | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
   const { toast } = useToast();
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const currentLanguageIndex = useRef(0);
   const audioStreamRef = useRef<MediaStream | null>(null);
+
+  // Fetch usage info on mount and after each expense
+  useEffect(() => {
+    fetchUsage();
+  }, []);
+
+  const fetchUsage = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setLoadingUsage(true);
+    const { data, error } = await supabase.rpc('get_usage_status', { _user_id: user.id });
+    if (!error && data) {
+      setUsageInfo(data as any);
+    }
+    setLoadingUsage(false);
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -311,6 +330,16 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   };
 
   const transcribeAudio = async (audioBlob: Blob) => {
+    // Check usage before transcribing
+    if (usageInfo?.voice_input?.remaining === 0) {
+      toast({
+        title: "已達使用上限",
+        description: "今日語音輸入次數已用完（20次），明天 00:00 重置",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -333,6 +362,15 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       if (error) throw error;
 
       if (!data.success) {
+        if (data.code === 'RATE_LIMIT_EXCEEDED') {
+          toast({
+            title: "已達使用上限",
+            description: data.error,
+            variant: "destructive"
+          });
+          await fetchUsage();
+          return;
+        }
         throw new Error(data.error || 'Failed to transcribe audio');
       }
 
@@ -340,6 +378,9 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       console.log('Transcribed text:', text);
       const preprocessed = preprocessText(text);
       setRecognizedText(preprocessed);
+
+      // Update usage after successful transcription
+      await fetchUsage();
 
       await processExpense(preprocessed);
 
@@ -384,6 +425,16 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   };
 
   const processExpense = async (text: string) => {
+    // Check AI parse usage
+    if (usageInfo?.ai_parse?.remaining === 0) {
+      toast({
+        title: "已達使用上限",
+        description: "今日 AI 解析次數已用完（20次），明天 00:00 重置",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -394,8 +445,20 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       if (error) throw error;
 
       if (!data.success) {
+        if (data.code === 'RATE_LIMIT_EXCEEDED') {
+          toast({
+            title: "已達使用上限",
+            description: data.error,
+            variant: "destructive"
+          });
+          await fetchUsage();
+          return;
+        }
         throw new Error(data.error || 'Failed to parse expense');
       }
+
+      // Update usage after successful parse
+      await fetchUsage();
 
       let expense = data.expense;
       console.log('Parsed expense:', expense);
@@ -533,6 +596,22 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       )}
       
       <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
+        {!loadingUsage && usageInfo && (
+          <div className="mb-4 text-center space-y-1 glass-card px-6 py-3 rounded-xl shadow-sm">
+            <p className="text-xs text-muted-foreground mb-2">今日剩餘使用次數</p>
+            <div className="flex gap-4 justify-center">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">{usageInfo.voice_input?.remaining || 0}/20</p>
+                <p className="text-xs text-muted-foreground">語音輸入</p>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">{usageInfo.ai_parse?.remaining || 0}/20</p>
+                <p className="text-xs text-muted-foreground">AI 解析</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Orbit rings */}
         {isRecording && (
           <>

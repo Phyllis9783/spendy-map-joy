@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const corsHeaders = {
@@ -12,6 +13,51 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Get user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Check usage limit
+    const { data: usageCheck, error: usageError } = await supabaseClient.rpc(
+      'check_and_increment_usage',
+      { _user_id: user.id, _limit_type: 'ai_parse', _max_limit: 20 }
+    );
+
+    if (usageError) {
+      console.error('Usage check error:', usageError);
+      throw new Error('Failed to check usage limit');
+    }
+
+    if (!usageCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: '今日 AI 解析次數已達上限（20次），明天 00:00 重置',
+          code: 'RATE_LIMIT_EXCEEDED',
+          usage: usageCheck
+        }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
     const { text } = await req.json();
 
     if (!text) {
