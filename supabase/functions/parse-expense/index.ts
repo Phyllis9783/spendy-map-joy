@@ -265,6 +265,23 @@ serve(async (req) => {
       }
     }
 
+    // Taiwan location aliases for better geocoding accuracy
+    const taiwanLocationAliases: Record<string, string> = {
+      '美麗華': '美麗華百樂園, 台北市中山區, 台灣',
+      '北車': '台北車站, 台北市, 台灣',
+      '星巴克': '星巴克, 台北市, 台灣',
+      '101': '台北101, 台北市信義區, 台灣',
+      '西門町': '西門町, 台北市萬華區, 台灣',
+      '東區': '忠孝東路, 台北市大安區, 台灣',
+      '信義區': '信義區, 台北市, 台灣',
+      '成功皮膚科': '成功皮膚科, 台北市, 台灣',
+    };
+
+    // Check if coordinates are within Taiwan's bounds
+    const isInTaiwan = (lat: number, lng: number): boolean => {
+      return lat >= 21.5 && lat <= 25.5 && lng >= 119.5 && lng <= 122.5;
+    };
+
     // Geocoding: if location_name exists, get coordinates
     let location_lat = null;
     let location_lng = null;
@@ -273,16 +290,52 @@ serve(async (req) => {
       try {
         const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
         if (GOOGLE_MAPS_API_KEY) {
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsedExpense.location_name)}&key=${GOOGLE_MAPS_API_KEY}`;
+          console.log(`Attempting to geocode: ${parsedExpense.location_name}`);
+          
+          // Use alias if available for better accuracy
+          const searchLocation = taiwanLocationAliases[parsedExpense.location_name] || `${parsedExpense.location_name}, 台灣`;
+          
+          // Optimized geocoding with Taiwan region bias
+          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(searchLocation)}&region=tw&language=zh-TW&components=country:TW&key=${GOOGLE_MAPS_API_KEY}`;
+          console.log(`Geocoding URL: ${geocodeUrl}`);
+          
           const geocodeResponse = await fetch(geocodeUrl);
           const geocodeData = await geocodeResponse.json();
           
+          console.log('Geocoding response status:', geocodeData.status);
+          
           if (geocodeData.status === 'OK' && geocodeData.results.length > 0) {
-            location_lat = geocodeData.results[0].geometry.location.lat;
-            location_lng = geocodeData.results[0].geometry.location.lng;
-            console.log(`Geocoded "${parsedExpense.location_name}" to: ${location_lat}, ${location_lng}`);
+            const tempLat = geocodeData.results[0].geometry.location.lat;
+            const tempLng = geocodeData.results[0].geometry.location.lng;
+            
+            // Validate that coordinates are in Taiwan
+            if (isInTaiwan(tempLat, tempLng)) {
+              location_lat = tempLat;
+              location_lng = tempLng;
+              console.log(`✅ Geocoding successful (Taiwan): ${location_lat}, ${location_lng}`);
+            } else {
+              console.warn(`⚠️ Geocoding result outside Taiwan bounds: ${tempLat}, ${tempLng}`);
+              
+              // Retry with more specific search
+              const retryUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(parsedExpense.location_name + ', 台北市, 台灣')}&region=tw&language=zh-TW&components=country:TW&key=${GOOGLE_MAPS_API_KEY}`;
+              const retryResponse = await fetch(retryUrl);
+              const retryData = await retryResponse.json();
+              
+              if (retryData.status === 'OK' && retryData.results.length > 0) {
+                const retryLat = retryData.results[0].geometry.location.lat;
+                const retryLng = retryData.results[0].geometry.location.lng;
+                
+                if (isInTaiwan(retryLat, retryLng)) {
+                  location_lat = retryLat;
+                  location_lng = retryLng;
+                  console.log(`✅ Retry geocoding successful (Taiwan): ${location_lat}, ${location_lng}`);
+                } else {
+                  console.error(`❌ Retry still outside Taiwan: ${retryLat}, ${retryLng}`);
+                }
+              }
+            }
           } else {
-            console.log(`Geocoding failed for "${parsedExpense.location_name}": ${geocodeData.status}`);
+            console.log(`Geocoding failed or no results for: ${parsedExpense.location_name}`);
           }
         }
       } catch (geocodeError) {

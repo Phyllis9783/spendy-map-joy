@@ -85,7 +85,68 @@ const Map = () => {
 
       if (error) throw error;
 
-      setExpenses(data || []);
+      // Check if coordinates are within Taiwan's bounds
+      const isInTaiwan = (lat: number, lng: number): boolean => {
+        return lat >= 21.5 && lat <= 25.5 && lng >= 119.5 && lng <= 122.5;
+      };
+
+      // Auto-fix expenses with coordinates outside Taiwan
+      if (data && data.length > 0) {
+        const invalidExpenses = data.filter(
+          exp => exp.location_lat && exp.location_lng && 
+          !isInTaiwan(exp.location_lat, exp.location_lng)
+        );
+
+        if (invalidExpenses.length > 0 && GOOGLE_MAPS_API_KEY) {
+          console.log(`⚠️ 發現 ${invalidExpenses.length} 筆座標在台灣範圍外，自動修正中...`);
+          
+          for (const expense of invalidExpenses) {
+            try {
+              // Re-geocode with Taiwan bias
+              const response = await fetch(
+                `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+                  `${expense.location_name}, 台北市, 台灣`
+                )}&key=${GOOGLE_MAPS_API_KEY}&region=tw&language=zh-TW&components=country:TW`
+              );
+              
+              const geocodeData = await response.json();
+              
+              if (geocodeData.status === 'OK' && geocodeData.results[0]) {
+                const { lat, lng } = geocodeData.results[0].geometry.location;
+                
+                if (isInTaiwan(lat, lng)) {
+                  await supabase
+                    .from('expenses')
+                    .update({
+                      location_lat: lat,
+                      location_lng: lng,
+                    })
+                    .eq('id', expense.id);
+                  
+                  console.log(`✅ 已修正 "${expense.location_name}": ${expense.location_lat}, ${expense.location_lng} -> ${lat}, ${lng}`);
+                }
+              }
+            } catch (err) {
+              console.error(`修正失敗 (${expense.location_name}):`, err);
+            }
+          }
+          
+          // Re-fetch after corrections
+          const { data: correctedData } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('user_id', user.id)
+            .not('location_lat', 'is', null)
+            .not('location_lng', 'is', null)
+            .order('expense_date', { ascending: false });
+          
+          if (correctedData) {
+            setExpenses(correctedData);
+          }
+        } else {
+          setExpenses(data || []);
+        }
+      }
 
       // Check for expenses with location_name but no coordinates
       const { data: missingData } = await supabase
@@ -320,25 +381,35 @@ const Map = () => {
         return;
       }
 
-      // 常見簡稱對照表
-      const locationAliases: Record<string, string> = {
-        '北車': '台北車站',
-        '西門': '西門町',
-        '東區': '台北東區',
-        '信義': '信義區',
-        '天母': '天母商圈',
-        '士林': '士林夜市',
-        '師大': '師大夜市',
-        '公館': '公館商圈',
-        '中山': '中山區',
-        '南港': '南港區',
-        '內湖': '內湖區',
-        '大安': '大安區',
-        '松山': '松山區',
-        '萬華': '萬華區',
-        '中正': '中正區',
-        '大直': '大直商圈',
-        '天幕': '微風南山天幕劇院',
+      // Taiwan location aliases for better geocoding accuracy
+      const taiwanLocationAliases: Record<string, string> = {
+        '美麗華': '美麗華百樂園, 台北市中山區, 台灣',
+        '北車': '台北車站, 台北市, 台灣',
+        '星巴克': '星巴克, 台北市, 台灣',
+        '101': '台北101, 台北市信義區, 台灣',
+        '西門町': '西門町, 台北市萬華區, 台灣',
+        '東區': '忠孝東路, 台北市大安區, 台灣',
+        '信義區': '信義區, 台北市, 台灣',
+        '成功皮膚科': '成功皮膚科, 台北市, 台灣',
+        '西門': '西門町, 台北市萬華區, 台灣',
+        '信義': '信義區, 台北市, 台灣',
+        '天母': '天母商圈, 台北市士林區, 台灣',
+        '士林': '士林夜市, 台北市士林區, 台灣',
+        '師大': '師大夜市, 台北市大安區, 台灣',
+        '公館': '公館商圈, 台北市文山區, 台灣',
+        '中山': '中山區, 台北市, 台灣',
+        '南港': '南港區, 台北市, 台灣',
+        '內湖': '內湖區, 台北市, 台灣',
+        '大安': '大安區, 台北市, 台灣',
+        '松山': '松山區, 台北市, 台灣',
+        '萬華': '萬華區, 台北市, 台灣',
+        '中正': '中正區, 台北市, 台灣',
+        '大直': '大直商圈, 台北市中山區, 台灣',
+      };
+
+      // Check if coordinates are within Taiwan's bounds
+      const isInTaiwan = (lat: number, lng: number): boolean => {
+        return lat >= 21.5 && lat <= 25.5 && lng >= 119.5 && lng <= 122.5;
       };
 
       toast({
@@ -353,7 +424,7 @@ const Map = () => {
       for (const expense of missingExpenses) {
         try {
           const originalName = expense.location_name;
-          const expandedName = locationAliases[originalName] || originalName;
+          const expandedName = taiwanLocationAliases[originalName] || originalName;
           
           // 多重搜尋策略
           const searchQueries = [
@@ -368,7 +439,7 @@ const Map = () => {
             const response = await fetch(
               `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
                 query
-              )}&key=${GOOGLE_MAPS_API_KEY}&region=tw&language=zh-TW`
+              )}&key=${GOOGLE_MAPS_API_KEY}&region=tw&language=zh-TW&components=country:TW`
             );
             
             const data = await response.json();
@@ -378,21 +449,27 @@ const Map = () => {
             if (data.status === 'OK' && data.results[0]) {
               const { lat, lng } = data.results[0].geometry.location;
               
-              const { error: updateError } = await supabase
-                .from('expenses')
-                .update({
-                  location_lat: lat,
-                  location_lng: lng,
-                })
-                .eq('id', expense.id);
+              // Validate coordinates are in Taiwan
+              if (isInTaiwan(lat, lng)) {
+                const { error: updateError } = await supabase
+                  .from('expenses')
+                  .update({
+                    location_lat: lat,
+                    location_lng: lng,
+                  })
+                  .eq('id', expense.id);
 
-              if (updateError) {
-                console.error(`❌ 更新失敗 (${originalName}):`, updateError);
+                if (updateError) {
+                  console.error(`❌ 更新失敗 (${originalName}):`, updateError);
+                } else {
+                  successCount++;
+                  geocodeSuccess = true;
+                  console.log(`✅ 成功: ${originalName} -> ${data.results[0].formatted_address} (${lat}, ${lng})`);
+                  break;
+                }
               } else {
-                successCount++;
-                geocodeSuccess = true;
-                console.log(`✅ 成功: ${originalName} -> ${data.results[0].formatted_address}`);
-                break;
+                console.warn(`⚠️ 座標超出台灣範圍: "${query}" -> ${lat}, ${lng}`);
+                continue; // Try next query
               }
             } else if (data.status === 'ZERO_RESULTS') {
               console.log(`⚠️ 無結果: "${query}"`);
@@ -431,7 +508,7 @@ const Map = () => {
       if (successCount > 0) {
         toast({
           title: "✅ 座標補齊完成",
-          description: `成功補齊 ${successCount} 個地點！`,
+          description: `成功補齊 ${successCount} 個地點（已驗證在台灣）！`,
         });
         fetchExpenses();
       }
