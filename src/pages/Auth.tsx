@@ -34,9 +34,24 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isInApp, setIsInApp] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [oauthErrorDesc, setOauthErrorDesc] = useState<string | null>(null);
 
   useEffect(() => {
     setIsInApp(isInAppBrowser());
+
+    // Parse OAuth errors from redirect params
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get('error') || params.get('error_code');
+    const desc = params.get('error_description') || params.get('error_message');
+    if (err) {
+      setOauthError(err);
+      setOauthErrorDesc(desc);
+      // Clean the URL to avoid showing the alert repeatedly
+      const url = new URL(window.location.href);
+      url.search = '';
+      window.history.replaceState({}, document.title, url.toString());
+    }
   }, []);
 
   const copyCurrentUrl = async () => {
@@ -168,6 +183,19 @@ const Auth = () => {
               讓記帳變得有趣
             </p>
           </div>
+
+          {oauthError && (
+            <Alert className="mb-4 border-destructive/50 bg-destructive/10">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="space-y-2">
+                <p className="text-sm font-semibold text-destructive">Google 登入失敗（{oauthError}）</p>
+                {oauthErrorDesc && <p className="text-sm">{oauthErrorDesc}</p>}
+                <p className="text-xs text-muted-foreground">
+                  若顯示「You do not have access to this page」，請在後台將 Google OAuth 轉為 External/Production，或把您的帳號加入測試名單，並確認 Redirect URLs 已正確設定。
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
