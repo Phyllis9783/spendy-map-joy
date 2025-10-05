@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Mic, Loader2, Type, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
@@ -618,16 +619,32 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       
       <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
         {!loadingUsage && usageInfo && (
-          <div className="mb-4 text-center space-y-1 glass-card px-6 py-3 rounded-xl shadow-sm">
-            <p className="text-xs text-muted-foreground mb-2">今日剩餘使用次數</p>
-            <div className="flex gap-4 justify-center">
-              <div className="text-center">
-                <p className="text-sm font-semibold text-foreground">{usageInfo.voice_input?.remaining || 0}/20</p>
-                <p className="text-xs text-muted-foreground">語音輸入</p>
+          <div className="mb-4 w-full space-y-3 glass-card px-6 py-4 rounded-xl shadow-sm">
+            <p className="text-xs text-muted-foreground text-center mb-3">今日配額使用情況</p>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">語音轉文字</span>
+                  <span className="font-semibold text-foreground">
+                    剩 {usageInfo.voice_input?.remaining || 0} 次
+                  </span>
+                </div>
+                <Progress 
+                  value={((usageInfo.voice_input?.remaining || 0) / 20) * 100} 
+                  className="h-2"
+                />
               </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-foreground">{usageInfo.ai_parse?.remaining || 0}/20</p>
-                <p className="text-xs text-muted-foreground">AI 解析</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">智能記帳</span>
+                  <span className="font-semibold text-foreground">
+                    剩 {usageInfo.ai_parse?.remaining || 0} 次
+                  </span>
+                </div>
+                <Progress 
+                  value={((usageInfo.ai_parse?.remaining || 0) / 20) * 100} 
+                  className="h-2"
+                />
               </div>
             </div>
           </div>
