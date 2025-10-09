@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Mic, Loader2, Type, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
+
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
@@ -605,6 +605,12 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     }
   };
 
+  const getUsageColor = (remaining: number) => {
+    if (remaining > 10) return "text-success";
+    if (remaining >= 5) return "text-warning";
+    return "text-destructive";
+  };
+
   return (
     <>
       {showConfetti && (
@@ -619,32 +625,22 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       
       <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
         {!loadingUsage && usageInfo && (
-          <div className="mb-4 w-full space-y-3 glass-card px-6 py-4 rounded-xl shadow-sm">
-            <p className="text-xs text-muted-foreground text-center mb-3">今日配額使用情況</p>
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">語音轉文字</span>
-                  <span className="font-semibold text-foreground">
-                    剩 {usageInfo.voice_input?.remaining || 0} 次
-                  </span>
+          <div className="mb-4 w-full glass-card px-6 py-4 rounded-xl shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground text-center mb-4">今日剩餘使用次數</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-background/50 border border-border/50">
+                <div className={`text-4xl font-bold mb-1 ${getUsageColor(usageInfo.voice_input?.remaining || 0)}`}>
+                  {usageInfo.voice_input?.remaining || 0}
                 </div>
-                <Progress 
-                  value={((usageInfo.voice_input?.remaining || 0) / 20) * 100} 
-                  className="h-2"
-                />
+                <div className="text-xs text-muted-foreground">次</div>
+                <div className="text-xs text-muted-foreground mt-2">語音轉文字</div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">智能記帳</span>
-                  <span className="font-semibold text-foreground">
-                    剩 {usageInfo.ai_parse?.remaining || 0} 次
-                  </span>
+              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-background/50 border border-border/50">
+                <div className={`text-4xl font-bold mb-1 ${getUsageColor(usageInfo.ai_parse?.remaining || 0)}`}>
+                  {usageInfo.ai_parse?.remaining || 0}
                 </div>
-                <Progress 
-                  value={((usageInfo.ai_parse?.remaining || 0) / 20) * 100} 
-                  className="h-2"
-                />
+                <div className="text-xs text-muted-foreground">次</div>
+                <div className="text-xs text-muted-foreground mt-2">智能記帳</div>
               </div>
             </div>
           </div>
