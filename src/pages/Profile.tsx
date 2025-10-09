@@ -225,38 +225,120 @@ const Profile = () => {
             <h3 className="font-semibold">今日使用量</h3>
           </div>
           {usageInfo ? (
-            <div className="space-y-3 mt-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">語音輸入</span>
-                  <span className="font-semibold">{usageInfo.voice_input?.remaining || 0}/20</span>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative w-20 h-20">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      className="text-muted/20"
+                    />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      className={`${
+                        (usageInfo.voice_input?.remaining || 0) > 10
+                          ? 'stroke-success'
+                          : (usageInfo.voice_input?.remaining || 0) >= 5
+                          ? 'stroke-warning'
+                          : 'stroke-destructive'
+                      } transition-all duration-700 ease-out`}
+                      style={{
+                        strokeDasharray: 2 * Math.PI * 32,
+                        strokeDashoffset:
+                          2 * Math.PI * 32 -
+                          (((usageInfo.voice_input?.remaining || 0) / 20) * 100 / 100) *
+                            (2 * Math.PI * 32),
+                      }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div
+                      className={`text-xl font-bold ${
+                        (usageInfo.voice_input?.remaining || 0) > 10
+                          ? 'text-success'
+                          : (usageInfo.voice_input?.remaining || 0) >= 5
+                          ? 'text-warning'
+                          : 'text-destructive'
+                      }`}
+                    >
+                      {usageInfo.voice_input?.remaining || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">/ 20</div>
+                  </div>
                 </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((usageInfo.voice_input?.current_usage || 0) / 20) * 100}%` }}
-                  />
-                </div>
+                <div className="text-xs font-medium text-muted-foreground text-center">語音輸入</div>
               </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-muted-foreground">AI 解析</span>
-                  <span className="font-semibold">{usageInfo.ai_parse?.remaining || 0}/20</span>
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative w-20 h-20">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      className="text-muted/20"
+                    />
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      strokeLinecap="round"
+                      className={`${
+                        (usageInfo.ai_parse?.remaining || 0) > 10
+                          ? 'stroke-success'
+                          : (usageInfo.ai_parse?.remaining || 0) >= 5
+                          ? 'stroke-warning'
+                          : 'stroke-destructive'
+                      } transition-all duration-700 ease-out`}
+                      style={{
+                        strokeDasharray: 2 * Math.PI * 32,
+                        strokeDashoffset:
+                          2 * Math.PI * 32 -
+                          (((usageInfo.ai_parse?.remaining || 0) / 20) * 100 / 100) *
+                            (2 * Math.PI * 32),
+                      }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <div
+                      className={`text-xl font-bold ${
+                        (usageInfo.ai_parse?.remaining || 0) > 10
+                          ? 'text-success'
+                          : (usageInfo.ai_parse?.remaining || 0) >= 5
+                          ? 'text-warning'
+                          : 'text-destructive'
+                      }`}
+                    >
+                      {usageInfo.ai_parse?.remaining || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">/ 20</div>
+                  </div>
                 </div>
-                <div className="w-full bg-secondary rounded-full h-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((usageInfo.ai_parse?.current_usage || 0) / 20) * 100}%` }}
-                  />
-                </div>
+                <div className="text-xs font-medium text-muted-foreground text-center">AI 解析</div>
               </div>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                明天 00:00 重置
-              </p>
             </div>
           ) : (
             <p className="text-sm text-muted-foreground mt-2">載入中...</p>
           )}
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            明天 00:00 重置
+          </p>
         </Card>
       </div>
 

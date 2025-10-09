@@ -606,9 +606,66 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
   };
 
   const getUsageColor = (remaining: number) => {
-    if (remaining > 10) return "text-success";
-    if (remaining >= 5) return "text-warning";
-    return "text-destructive";
+    if (remaining > 10) return { ring: "stroke-success", text: "text-success" };
+    if (remaining >= 5) return { ring: "stroke-warning", text: "text-warning" };
+    return { ring: "stroke-destructive", text: "text-destructive" };
+  };
+
+  const CircularProgress = ({ 
+    value, 
+    max, 
+    label, 
+    color 
+  }: { 
+    value: number; 
+    max: number; 
+    label: string; 
+    color: { ring: string; text: string } 
+  }) => {
+    const percentage = (value / max) * 100;
+    const circumference = 2 * Math.PI * 36;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-3">
+        <div className="relative w-28 h-28">
+          <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+            {/* Background circle */}
+            <circle
+              cx="40"
+              cy="40"
+              r="36"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              className="text-muted/20"
+            />
+            {/* Progress circle */}
+            <circle
+              cx="40"
+              cy="40"
+              r="36"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              strokeLinecap="round"
+              className={`${color.ring} transition-all duration-700 ease-out`}
+              style={{
+                strokeDasharray: circumference,
+                strokeDashoffset: strokeDashoffset,
+              }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className={`text-3xl font-bold ${color.text} transition-colors duration-300`}>
+              {value}
+            </div>
+            <div className="text-xs text-muted-foreground">/ {max}</div>
+          </div>
+        </div>
+        <div className="text-sm font-medium text-muted-foreground">{label}</div>
+      </div>
+    );
   };
 
   return (
@@ -625,25 +682,27 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       
       <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
         {!loadingUsage && usageInfo && (
-          <div className="mb-4 w-full glass-card px-6 py-4 rounded-xl shadow-sm">
-            <p className="text-sm font-medium text-muted-foreground text-center mb-4">今日剩餘使用次數</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-background/50 border border-border/50">
-                <div className={`text-4xl font-bold mb-1 ${getUsageColor(usageInfo.voice_input?.remaining || 0)}`}>
-                  {usageInfo.voice_input?.remaining || 0}
-                </div>
-                <div className="text-xs text-muted-foreground">次</div>
-                <div className="text-xs text-muted-foreground mt-2">語音轉文字</div>
-              </div>
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-background/50 border border-border/50">
-                <div className={`text-4xl font-bold mb-1 ${getUsageColor(usageInfo.ai_parse?.remaining || 0)}`}>
-                  {usageInfo.ai_parse?.remaining || 0}
-                </div>
-                <div className="text-xs text-muted-foreground">次</div>
-                <div className="text-xs text-muted-foreground mt-2">智能記帳</div>
-              </div>
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-4 w-full glass-card px-6 py-6 rounded-2xl backdrop-blur-xl"
+          >
+            <div className="grid grid-cols-2 gap-6">
+              <CircularProgress
+                value={usageInfo.voice_input?.remaining || 0}
+                max={usageInfo.voice_input?.max_limit || 20}
+                label="語音轉文字"
+                color={getUsageColor(usageInfo.voice_input?.remaining || 0)}
+              />
+              <CircularProgress
+                value={usageInfo.ai_parse?.remaining || 0}
+                max={usageInfo.ai_parse?.max_limit || 20}
+                label="智能記帳"
+                color={getUsageColor(usageInfo.ai_parse?.remaining || 0)}
+              />
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Orbit rings */}
