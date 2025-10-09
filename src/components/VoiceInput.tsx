@@ -49,6 +49,30 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
     fetchUsage();
   }, []);
 
+  // Show toast when usage is low
+  useEffect(() => {
+    if (usageInfo) {
+      const voiceRemaining = usageInfo.voice_input?.remaining || 0;
+      const aiRemaining = usageInfo.ai_parse?.remaining || 0;
+      
+      if (voiceRemaining < 5 || aiRemaining < 5) {
+        toast({
+          title: "今日額度即將用完",
+          description: `語音: ${voiceRemaining}/20, AI: ${aiRemaining}/20`,
+          action: (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => window.location.href = '/profile'}
+            >
+              查看詳情
+            </Button>
+          ),
+        });
+      }
+    }
+  }, [usageInfo]);
+
   const fetchUsage = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -681,30 +705,6 @@ const VoiceInput = ({ onExpenseCreated }: VoiceInputProps) => {
       )}
       
       <div className="flex flex-col items-center gap-4 w-full max-w-md mx-auto relative">
-        {!loadingUsage && usageInfo && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-4 w-full glass-card px-6 py-6 rounded-2xl backdrop-blur-xl"
-          >
-            <div className="grid grid-cols-2 gap-6">
-              <CircularProgress
-                value={usageInfo.voice_input?.remaining || 0}
-                max={usageInfo.voice_input?.max_limit || 20}
-                label="語音轉文字"
-                color={getUsageColor(usageInfo.voice_input?.remaining || 0)}
-              />
-              <CircularProgress
-                value={usageInfo.ai_parse?.remaining || 0}
-                max={usageInfo.ai_parse?.max_limit || 20}
-                label="智能記帳"
-                color={getUsageColor(usageInfo.ai_parse?.remaining || 0)}
-              />
-            </div>
-          </motion.div>
-        )}
-
         {/* Orbit rings */}
         {isRecording && (
           <>
