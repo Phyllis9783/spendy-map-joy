@@ -64,8 +64,7 @@ const App = () => (
                 <Map />
                 <BottomNav />
               </ProtectedRoute>
-            }
-          />
+            } />
           <Route
             path="/profile"
             element={
