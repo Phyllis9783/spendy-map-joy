@@ -54,8 +54,9 @@ const App = () => (
                   <BottomNav />
                 </ProtectedRoute>
               }
-<Route path="/auth/callback" element={<Auth />} /> 
+              /> 
 
+<Route path="/auth/callback" element={<Auth />} />
 //...
             />
           <Route
