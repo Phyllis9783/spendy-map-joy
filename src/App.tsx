@@ -54,8 +54,6 @@ const App = () => (
                   <BottomNav />
                 </ProtectedRoute>
               }
-              //... (在其他路由的上方或下方皆可)
-
 <Route path="/auth/callback" element={<Auth />} /> 
 
 //...
