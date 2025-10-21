@@ -56,8 +56,7 @@ const App = () => (
               }
               
 
-<Route path="/auth/callback" element={<Auth />} />
-            
+<Route path="/auth/callback" element={<Auth />} />            
           <Route
             path="/map"
             element={
